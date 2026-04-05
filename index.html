@@ -1,0 +1,3257 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIPassiveLab — Amazon Merch Keyword Generator v0.6</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00d2eb">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Merch Keywords">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --primary: #00d2eb;
+  --primary-dark: #0891b2;
+  --primary-glow: rgba(0,210,235,.12);
+  --accent: #6366f1;
+  --accent-bright: #818cf8;
+  --bg: #0a0a0f;
+  --card: #111118;
+  --card2: #161620;
+  --text: #ffffff;
+  --muted: rgba(255,255,255,.55);
+  --green: #34d399;
+  --red: #f87171;
+  --blue: #6366f1;
+  --border: rgba(255,255,255,.06);
+  --border-hover: rgba(255,255,255,.12);
+  --yellow: #fbbf24;
+  --gold: #fbbf24;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans Thai',Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* Header */
+.header { background:var(--card); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; gap:16px; backdrop-filter:blur(12px); }
+.header h1 { font-size:24px; color:var(--text); font-weight:600; letter-spacing:-0.02em; }
+.header h1 em { font-style:normal; color:var(--primary); }
+.header span { color:var(--muted); font-size:15px; }
+
+/* Tabs */
+.main-tabs { display:flex; gap:4px; padding:10px 24px 0; background:var(--card); border-bottom:1px solid var(--border); overflow-x:auto; }
+.main-tab { padding:12px 24px; border-radius:12px 12px 0 0; background:transparent; color:var(--muted); cursor:pointer; font-size:15px; border:1px solid transparent; border-bottom:none; white-space:nowrap; transition:all .25s ease; font-weight:500; }
+.main-tab:hover { color:rgba(255,255,255,.88); background:rgba(255,255,255,.04); }
+.main-tab.active { background:var(--bg); color:var(--primary); border-color:var(--border); border-bottom-color:transparent; font-weight:600; box-shadow:0 -2px 8px rgba(0,210,235,.08); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* Layout */
+.container { max-width:1500px; margin:0 auto; padding:16px; }
+.grid2 { display:grid; grid-template-columns:360px 1fr; gap:16px; }
+.panel { background:var(--card); border-radius:16px; border:1px solid var(--border); padding:20px; margin-bottom:14px; }
+.panel h2 { font-size:18px; color:var(--primary); margin-bottom:12px; display:flex; align-items:center; gap:8px; font-weight:600; }
+
+/* Form */
+label { display:block; font-size:14px; color:var(--muted); margin-bottom:4px; font-weight:500; }
+input,select,textarea { width:100%; padding:11px 14px; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:12px; color:var(--text); font-size:15px; outline:none; transition:border-color .2s,box-shadow .2s; font-family:inherit; }
+input:focus,select:focus,textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(0,210,235,.1); }
+select option { background:var(--card); color:var(--text); padding:8px 12px; font-size:15px; }
+select option:checked { background:var(--primary); color:#000; }
+select option:hover { background:rgba(0,210,235,.2); }
+.field { margin-bottom:12px; }
+
+/* Buttons */
+.btn { padding:10px 20px; border:none; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:all .25s ease; font-family:inherit; letter-spacing:0.01em; }
+.btn-primary { background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:#000; box-shadow:0 2px 12px rgba(0,210,235,.2); }
+.btn-primary:hover { box-shadow:0 4px 20px rgba(0,210,235,.35); transform:translateY(-1px); }
+.btn-green { background:linear-gradient(135deg,#34d399,#059669); color:#000; box-shadow:0 2px 12px rgba(52,211,153,.2); }
+.btn-green:hover { box-shadow:0 4px 20px rgba(52,211,153,.35); transform:translateY(-1px); }
+.btn-blue { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; box-shadow:0 2px 12px rgba(99,102,241,.2); }
+.btn-blue:hover { box-shadow:0 4px 20px rgba(99,102,241,.35); transform:translateY(-1px); }
+.btn-red { background:linear-gradient(135deg,#f87171,#dc2626); color:#fff; box-shadow:0 2px 12px rgba(248,113,113,.15); }
+.btn-red:hover { box-shadow:0 4px 20px rgba(248,113,113,.3); transform:translateY(-1px); }
+.btn-sm { padding:7px 14px; font-size:13px; border-radius:10px; }
+.btn:disabled { opacity:.35; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+
+/* Toggle */
+.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+.toggle-row:last-child { border-bottom:none; }
+.toggle-label { font-size:14px; font-weight:500; }
+.toggle-label small { color:var(--muted); font-size:12px; }
+.toggle-switch { position:relative; width:52px; height:28px; cursor:pointer; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; inset:0; background:rgba(255,255,255,.08); border-radius:14px; border:1px solid var(--border); transition:.3s; }
+.toggle-slider:before { content:''; position:absolute; height:22px; width:22px; left:2px; bottom:2px; background:rgba(255,255,255,.4); border-radius:50%; transition:.3s; }
+.toggle-switch input:checked + .toggle-slider { background:var(--primary); border-color:var(--primary); box-shadow:0 0 12px rgba(0,210,235,.3); }
+.toggle-switch input:checked + .toggle-slider:before { transform:translateX(24px); background:#000; }
+
+/* Images Grid */
+.images-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; max-height:450px; overflow-y:auto; margin-top:8px; padding:4px; }
+.img-thumb { position:relative; border-radius:12px; overflow:hidden; border:2px solid rgba(255,255,255,.06); cursor:pointer; aspect-ratio:1; transition:all .25s ease; }
+.img-thumb:hover { border-color:rgba(255,255,255,.15); transform:scale(1.02); }
+.img-thumb img { width:100%; height:100%; object-fit:cover; }
+.img-thumb.selected { border-color:var(--primary); box-shadow:0 0 16px rgba(0,210,235,.2); }
+.img-thumb .check { position:absolute; top:5px; right:5px; width:26px; height:26px; background:var(--primary); border-radius:50%; display:none; align-items:center; justify-content:center; font-size:14px; color:#000; }
+.img-thumb.selected .check { display:flex; }
+.img-thumb .fname { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent,rgba(0,0,0,.85)); font-size:12px; padding:16px 6px 4px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Table */
+table { width:100%; border-collapse:collapse; font-size:14px; }
+th { background:var(--card2); padding:10px; text-align:left; font-size:12px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1; letter-spacing:.04em; font-weight:600; }
+td { padding:10px; border-bottom:1px solid var(--border); vertical-align:top; }
+tr:hover td { background:rgba(0,210,235,.02); }
+.table-wrap { max-height:700px; overflow:auto; border-radius:12px; border:1px solid var(--border); }
+
+/* Badges */
+.badge { display:inline-block; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:600; }
+.badge-green { background:rgba(52,211,153,.12); color:var(--green); border:1px solid rgba(52,211,153,.2); }
+.badge-red { background:rgba(248,113,113,.12); color:var(--red); border:1px solid rgba(248,113,113,.2); }
+.badge-blue { background:rgba(99,102,241,.12); color:var(--accent-bright); border:1px solid rgba(99,102,241,.2); }
+.badge-orange { background:rgba(0,210,235,.1); color:var(--primary); border:1px solid rgba(0,210,235,.2); }
+.badge-yellow { background:rgba(251,191,36,.1); color:var(--yellow); border:1px solid rgba(251,191,36,.2); }
+
+/* Keyword Tags */
+.kw-tag { display:inline-block; margin:2px; padding:4px 10px; background:rgba(255,255,255,.04); border-radius:8px; font-size:13px; border:1px solid var(--border); transition:all .2s; }
+.kw-tag.valid { border-color:rgba(52,211,153,.3); color:var(--green); background:rgba(52,211,153,.06); }
+.kw-tag.invalid { border-color:rgba(248,113,113,.2); color:var(--muted); text-decoration:line-through; }
+.kw-tag.replaced { border-color:rgba(251,191,36,.3); color:var(--yellow); background:rgba(251,191,36,.06); }
+
+
+/* Progress */
+.progress-bar { width:100%; height:4px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; margin:6px 0; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--primary),var(--accent-bright)); transition:width .3s; border-radius:4px; }
+
+/* Status */
+.status-box { padding:10px 14px; border-radius:12px; font-size:14px; margin:8px 0; }
+.status-info { background:rgba(99,102,241,.08); border:1px solid rgba(99,102,241,.2); color:var(--accent-bright); }
+.status-success { background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.2); color:var(--green); }
+.status-error { background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.2); color:var(--red); }
+.status-warning { background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.2); color:var(--yellow); }
+
+/* Editable */
+.editable-cell { background:rgba(255,255,255,.04); border:1px solid transparent; border-radius:8px; padding:6px 10px; min-height:34px; outline:none; font-size:14px; color:var(--text); transition:border-color .2s; }
+.editable-cell:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(0,210,235,.08); }
+.editable-cell.clamped { max-height:72px; overflow:hidden; position:relative; }
+.editable-cell.clamped.expanded { max-height:none; overflow:visible; }
+.cell-wrap { position:relative; }
+.btn-expand { display:block; background:none; border:none; color:var(--primary); font-size:11px; cursor:pointer; padding:2px 0; opacity:.7; transition:opacity .2s; }
+.btn-expand:hover { opacity:1; text-decoration:underline; }
+.btn-copy { position:absolute; top:4px; right:4px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); color:var(--muted); cursor:pointer; border-radius:6px; padding:3px 8px; font-size:11px; opacity:0; transition:all .2s; z-index:2; backdrop-filter:blur(4px); }
+.cell-wrap:hover .btn-copy { opacity:1; }
+.btn-copy:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+.btn-copy.copied { background:var(--green); color:#fff; border-color:var(--green); opacity:1; }
+
+/* TM Check */
+.tm-badge { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600; margin:2px 0; }
+.tm-badge-ok { background:rgba(52,211,153,.1); color:var(--green); border:1px solid rgba(52,211,153,.2); }
+.tm-badge-warn { background:rgba(248,113,113,.1); color:var(--red); border:1px solid rgba(248,113,113,.2); }
+.tm-found { background:rgba(248,113,113,.08); color:var(--red); font-weight:600; padding:1px 4px; border-radius:4px; border-bottom:2px solid var(--red); }
+.tm-fixing { animation:tmPulse 1s infinite; }
+@keyframes tmPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.btn-fix-tm { background:linear-gradient(135deg,#f59e0b,#d97706); color:#000; border:none; border-radius:6px; padding:3px 10px; font-size:11px; font-weight:700; cursor:pointer; transition:all .2s; }
+.btn-fix-tm:hover { box-shadow:0 2px 8px rgba(245,158,11,.4); transform:translateY(-1px); }
+
+/* Char count */
+.char-count { font-size:14px; }
+.char-ok { color:var(--green); }
+.char-over { color:var(--red); }
+
+/* Spinner */
+.spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.1); border-top-color:var(--primary); border-radius:50%; animation:spin .6s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* API selector */
+.api-selector { display:flex; gap:6px; margin-bottom:8px; }
+.api-opt { flex:1; padding:10px; border-radius:12px; border:1px solid var(--border); cursor:pointer; text-align:center; transition:all .25s; }
+.api-opt:hover { border-color:var(--border-hover); background:rgba(255,255,255,.02); }
+.api-opt.active { border-color:rgba(0,210,235,.3); background:rgba(0,210,235,.06); }
+.api-opt .name { font-size:15px; font-weight:600; }
+.api-opt .desc { font-size:13px; color:var(--muted); }
+
+/* Modal */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; z-index:999; }
+.modal-overlay.hidden { display:none; }
+.modal-content { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:24px; max-width:500px; width:90%; max-height:80vh; overflow-y:auto; }
+.modal-content h3 { color:var(--primary); margin-bottom:12px; font-size:18px; font-weight:600; }
+
+/* DB Table */
+.db-table { width:100%; }
+.db-table th { font-size:16px; padding:8px; }
+.db-table td { padding:6px 8px; font-size:17px; }
+.db-search { margin-bottom:10px; }
+
+/* Flex helpers */
+.flex-between { display:flex; justify-content:space-between; align-items:center; }
+.flex-gap { display:flex; gap:8px; align-items:center; }
+.hidden { display:none; }
+.mt8 { margin-top:8px; }
+.mb8 { margin-bottom:8px; }
+.amazon-link { color:var(--primary); text-decoration:none; font-size:14px; }
+.amazon-link:hover { text-decoration:underline; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:4px; }
+::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.2); }
+
+/* Season indicator */
+.season-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:8px; font-size:12px; background:rgba(251,191,36,.08); color:var(--yellow); border:1px solid rgba(251,191,36,.2); }
+
+/* Safety badge */
+.safety-safe { color:var(--green); }
+.safety-restricted { color:var(--red); }
+
+/* Stats bar */
+.stats-bar { display:flex; gap:16px; padding:10px 14px; background:rgba(255,255,255,.03); border-radius:12px; margin-bottom:10px; font-size:13px; flex-wrap:wrap; border:1px solid var(--border); }
+.stat-item { display:flex; align-items:center; gap:4px; }
+.stat-num { font-weight:700; color:var(--primary); }
+
+/* Enhanced panel hover */
+.panel { transition:border-color .25s,box-shadow .25s; }
+.panel:hover { border-color:rgba(255,255,255,.1); box-shadow:0 4px 24px rgba(0,0,0,.2); }
+
+/* Supabase status */
+#supabaseStatus code { user-select:all; }
+
+/* Pulse animation for generate button */
+@keyframes pulse-green {
+  0%,100% { box-shadow:0 0 16px rgba(52,211,153,.25); }
+  50% { box-shadow:0 0 28px rgba(52,211,153,.5); }
+}
+.btn-generate-ready { animation:pulse-green 2s infinite; }
+
+/* Column collapse styles */
+.col-collapsed { width:30px !important; max-width:30px; overflow:hidden; }
+.col-collapsed * { display:none; }
+.td-collapsed { max-width:30px; overflow:hidden; background:var(--card2); }
+.td-collapsed * { display:none; }
+
+/* Image delete button */
+.img-delete { position:absolute; top:5px; left:5px; width:24px; height:24px; background:rgba(248,113,113,.9); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff; cursor:pointer; opacity:0; transition:.2s; }
+.img-thumb:hover .img-delete { opacity:1; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <svg width="42" height="42" viewBox="0 0 42 42"><rect width="42" height="42" rx="12" fill="#111118" stroke="rgba(0,210,235,.3)" stroke-width="1.5"/><text x="21" y="16" text-anchor="middle" fill="#00d2eb" font-size="11" font-weight="700" font-family="Inter,sans-serif">AI</text><text x="21" y="30" text-anchor="middle" fill="#fff" font-size="10" font-weight="600" font-family="Inter,sans-serif">Lab</text></svg>
+  <div>
+    <h1><em>AI</em>PassiveLab — Keyword Generator <span id="appVersion" style="font-size:13px;color:var(--muted);font-weight:400">v0.6</span></h1>
+    <span>สร้าง SEO Keywords + Title + Safety Check สำหรับ Amazon Merch on Demand</span>
+  </div>
+</div>
+
+<!-- MAIN TABS -->
+<div class="main-tabs">
+  <div class="main-tab active" onclick="switchTab('generator')">🚀 Generator</div>
+  <div class="main-tab" onclick="switchTab('seasonal')">🔑 เพิ่ม Keyword</div>
+  <div class="main-tab" onclick="switchTab('rejected')">🚫 Rejected Keywords</div>
+  <div class="main-tab" onclick="switchTab('trademark')">™️ Trademark DB</div>
+  <div class="main-tab" onclick="switchTab('history')">📜 History</div>
+  <div class="main-tab" onclick="switchTab('settings')">⚙️ Settings</div>
+  <div class="main-tab" onclick="switchTab('apiconfig')">🔑 AI API</div>
+</div>
+
+<!-- ======================== TAB: GENERATOR ======================== -->
+<div id="tab-generator" class="tab-content active">
+<div class="container">
+  <div class="grid2">
+    <!-- LEFT PANEL -->
+    <div>
+      <!-- AI Status Badge -->
+      <div id="apiMiniStatus" class="panel" style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+        <span id="apiMiniProvider" style="color:var(--muted);font-size:14px">AI: ยังไม่พร้อมทำงาน</span>
+        <a href="#" onclick="event.preventDefault();switchTab('apiconfig')" style="color:var(--blue);font-size:13px;text-decoration:none">ตั้งค่า AI →</a>
+      </div>
+
+      <!-- Content Options (Brand + Toggles) -->
+      <div class="panel">
+        <h2>📝 Content Options</h2>
+
+        <!-- Brand Name -->
+        <div class="toggle-row">
+          <div class="toggle-label">Brand Name <small>(50 ตัวอักษร)</small> <small style="color:var(--gold)">AI คิดให้</small></div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleAIBrand" onchange="toggleAIBrandFn()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div style="margin-bottom:8px">
+          <input type="text" id="brandName" placeholder="ชื่อแบรนด์ของคุณ" maxlength="50">
+          <span class="char-count char-ok" id="brandCount">0/50</span>
+          <button class="btn btn-sm btn-green" onclick="applyBrandToKeywords()" style="margin-top:6px;width:100%;font-size:13px">✅ ใช้ Brand นี้ทุกสินค้า</button>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--card2);margin:12px 0">
+
+        <!-- Toggles -->
+        <div class="toggle-row">
+          <div class="toggle-label">Bullet Point 1 <small>(250 chars)</small> <small style="color:var(--gold)">AI คิดให้</small></div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleBP1" checked onchange="saveToggles()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Bullet Point 2 <small>(250 chars)</small> <small style="color:var(--gold)">AI คิดให้</small></div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleBP2" checked onchange="saveToggles()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Description <small>(2,000 chars)</small> <small style="color:var(--gold)">AI คิดให้</small></div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggleDesc" onchange="saveToggles()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Image Upload -->
+      <div class="panel">
+        <h2>🖼️ เลือกรูปลายเสื้อ</h2>
+        <input type="file" id="fileInput" multiple accept="image/*" style="display:none">
+        <input type="file" id="folderInput" multiple accept="image/*" webkitdirectory style="display:none">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()" style="flex:1">
+            📁 เลือกรูป
+          </button>
+          <button class="btn btn-blue" onclick="document.getElementById('folderInput').click()" style="flex:1">
+            📂 เลือกทั้งโฟลเดอร์
+          </button>
+        </div>
+        <div class="flex-between mt8" style="font-size:16px;color:var(--muted)">
+          <span id="imgCount">ยังไม่ได้เลือกรูป</span>
+          <div class="flex-gap">
+            <button class="btn btn-sm btn-blue" onclick="selectAllImages()">เลือกทั้งหมด</button>
+            <button class="btn btn-sm btn-red" onclick="deleteSelectedImages()" title="ลบรูปที่เลือกออกจากโปรแกรม">🗑️ ลบ</button>
+            <button class="btn btn-sm btn-red" onclick="deselectAllImages()" style="background:var(--muted)">ยกเลิก</button>
+          </div>
+        </div>
+        <div class="images-grid" id="imagesGrid"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div>
+      <div class="panel">
+        <div class="flex-between mb8">
+          <h2 style="margin:0">📊 ผลลัพธ์</h2>
+          <div class="flex-gap">
+            <button class="btn btn-green" onclick="generateKeywords()" id="btnGenerate" disabled style="position:relative;box-shadow:0 0 20px rgba(34,197,94,.3)">
+              🚀 สร้าง Keyword
+            </button>
+            <button class="btn btn-red" onclick="stopGeneration()" id="btnStop" disabled style="opacity:0.4">⏹ หยุด</button>
+            <button class="btn" onclick="pauseGeneration()" id="btnPause" disabled style="background:#eab308;color:#000;opacity:0.4">⏸ หยุดชั่วคราว</button>
+            <button class="btn btn-green" onclick="resumeGeneration()" id="btnResume" style="display:none">▶ ดำเนินการต่อ</button>
+            <button class="btn" onclick="checkTMAll()" id="btnCheckTM" disabled style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700">™ ตรวจ TM</button>
+            <button class="btn btn-primary" onclick="exportExcel()" id="btnExport" disabled>📥 Export Excel</button>
+            <button class="btn btn-red" onclick="clearResults()" id="btnClear" disabled>🗑️ ล้าง</button>
+          </div>
+        </div>
+        <div id="statsBar" class="stats-bar hidden">
+          <div class="stat-item">รูปทั้งหมด: <span class="stat-num" id="statTotal">0</span></div>
+          <div class="stat-item">สำเร็จ: <span class="stat-num" id="statDone">0</span></div>
+          <div class="stat-item">Keywords ที่ผ่าน: <span class="stat-num" id="statKW">0</span></div>
+          <div class="stat-item">ถูกกรอง: <span class="stat-num" id="statFiltered">0</span></div>
+        </div>
+        <div id="statusMsg"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:30px">#</th>
+                <th style="width:55px">รูป</th>
+                <th>Title <small>(60)</small></th>
+                <th style="width:100px">Brand <small>(50)</small></th>
+                <th class="col-bp1" style="width:160px;cursor:pointer" onclick="toggleColumn('bp1')">BP1 <small>▼</small></th>
+                <th class="col-bp2" style="width:160px;cursor:pointer" onclick="toggleColumn('bp2')">BP2 <small>▼</small></th>
+                <th class="col-desc" style="width:180px;cursor:pointer" onclick="toggleColumn('desc')">Description <small>▼</small></th>
+                <th style="width:100px">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody">
+              <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted)">เลือกรูปและกด "สร้าง Keywords" เพื่อเริ่มต้น</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- PROGRESS BAR (full width) -->
+  <div id="progressArea" class="hidden" style="margin-top:12px">
+    <div class="panel" style="padding:12px 20px;margin-bottom:0">
+      <div class="progress-bar" style="height:6px;border-radius:6px"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div style="font-size:15px;color:var(--muted);margin-top:6px" id="progressText">กำลังประมวลผล...</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ======================== TAB: AI API CONFIG ======================== -->
+<div id="tab-apiconfig" class="tab-content">
+<div class="container" style="max-width:900px">
+  <div class="panel">
+    <h2>🔑 ตั้งค่า AI API — OpenRouter</h2>
+    <p style="font-size:24px;color:var(--muted);margin-bottom:16px">ใส่ API Key จาก OpenRouter เพื่อใช้ AI วิเคราะห์รูปลายเสื้อ</p>
+
+    <!-- Provider Display (Locked to OpenRouter) -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.4);border-radius:8px">
+      <div style="font-size:28px">🔵</div>
+      <div>
+        <div style="font-size:18px;font-weight:bold;color:var(--blue)">OpenRouter</div>
+        <div style="font-size:14px;color:var(--muted)">Model: <strong style="color:var(--gold)">GPT-4o Mini</strong> (ล็อกไว้)</div>
+      </div>
+    </div>
+
+    <!-- Hidden elements for compatibility -->
+    <div id="opt-openai" class="hidden"></div>
+    <div id="opt-claude" class="hidden"></div>
+    <div id="opt-openrouter" class="hidden active"></div>
+    <div id="opt-gemini" class="hidden"></div>
+    <div id="openrouterModelSection" class="hidden">
+      <select id="openrouterModel"><option value="openai/gpt-4o-mini" selected>GPT-4o Mini</option></select>
+    </div>
+    <div id="geminiModelSection" class="hidden">
+      <select id="geminiModel"><option value="gemini-2.0-flash">Gemini 2.0 Flash</option></select>
+    </div>
+
+    <!-- API Key Input -->
+    <div class="field">
+      <label id="apiKeyLabel">OpenRouter API Key</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="apiKey" placeholder="ใส่ API Key ที่นี่ เช่น sk-or-..." style="flex:1">
+        <button class="btn btn-sm btn-blue" onclick="toggleShowKey()">👁️</button>
+        <button class="btn btn-sm btn-green" onclick="testAPIKey()">🧪 ทดสอบ</button>
+      </div>
+      <div id="apiKeyHint" style="font-size:22px;color:var(--muted);margin-top:4px">Format: sk-or-... (สมัครที่ openrouter.ai/keys)</div>
+    </div>
+
+    <!-- Test Result -->
+    <div id="apiTestResult" class="hidden mt8"></div>
+  </div>
+
+  <!-- Why GPT-4o Mini? -->
+  <div class="panel" style="border-left:3px solid var(--gold)">
+    <h2 style="font-size:15px;margin-bottom:8px">⭐ ทำไมถึงเลือก GPT-4o Mini?</h2>
+    <div style="font-size:15px;color:var(--muted);line-height:1.8">
+      <p><strong style="color:var(--green)">ราคาถูกมาก</strong> — ค่าใช้จ่ายต่ำกว่า GPT-4o ถึง 10 เท่า ประหยัดต้นทุนสำหรับการวิเคราะห์ลายเสื้อจำนวนมาก</p>
+      <p><strong style="color:var(--green)">เร็ว</strong> — ประมวลผลรวดเร็ว ไม่ต้องรอนาน เหมาะกับงานที่ต้องวิเคราะห์รูปหลายรูปพร้อมกัน</p>
+      <p><strong style="color:var(--green)">รองรับ Vision</strong> — วิเคราะห์รูปภาพได้ดี สามารถอ่านลายเสื้อแล้วสร้าง Keywords ได้แม่นยำ</p>
+      <p><strong style="color:var(--green)">ผ่าน OpenRouter</strong> — ไม่ต้องสมัคร OpenAI ตรง จ่ายเท่าที่ใช้ ไม่มีค่ารายเดือน</p>
+    </div>
+  </div>
+
+  <!-- Sign Up Link -->
+  <div class="panel" style="text-align:center;border-left:3px solid var(--blue)">
+    <h2 style="font-size:15px;margin-bottom:12px">🚀 สมัคร OpenRouter ฟรี!</h2>
+    <a href="https://openrouter.ai/keys" target="_blank" class="btn btn-green" style="font-size:18px;padding:12px 32px;display:inline-block;text-decoration:none">
+      👉 กดที่นี่เพื่อสมัคร OpenRouter และรับ API Key
+    </a>
+  </div>
+
+  <!-- Step-by-step Guide -->
+  <div class="panel" style="border-left:3px solid var(--green)">
+    <h2 style="font-size:15px;margin-bottom:12px">📖 วิธีสมัคร OpenRouter แบบง่ายๆ (5 นาที)</h2>
+    <div style="font-size:15px;color:var(--muted);line-height:2">
+      <p><strong style="color:var(--gold)">ขั้นตอนที่ 1:</strong> เข้าเว็บ <a href="https://openrouter.ai" target="_blank" class="amazon-link" style="font-size:15px">openrouter.ai</a> แล้วกดปุ่ม <strong>"Sign Up"</strong> หรือ <strong>"Log In"</strong> มุมขวาบน</p>
+      <p><strong style="color:var(--gold)">ขั้นตอนที่ 2:</strong> เลือกสมัครด้วย <strong>Google Account</strong> หรือ <strong>Email</strong> (แนะนำ Google เพราะง่ายที่สุด)</p>
+      <p><strong style="color:var(--gold)">ขั้นตอนที่ 3:</strong> เมื่อเข้าสู่ระบบแล้ว ไปที่เมนู <strong>"Keys"</strong> หรือเข้า <a href="https://openrouter.ai/keys" target="_blank" class="amazon-link" style="font-size:15px">openrouter.ai/keys</a> โดยตรง</p>
+      <p><strong style="color:var(--gold)">ขั้นตอนที่ 4:</strong> กดปุ่ม <strong>"Create Key"</strong> ตั้งชื่อ Key อะไรก็ได้ เช่น "Merch Generator" แล้วกด <strong>"Create"</strong></p>
+      <p><strong style="color:var(--gold)">ขั้นตอนที่ 5:</strong> <strong style="color:var(--red)">คัดลอก API Key ทันที!</strong> (จะขึ้นแค่ครั้งเดียว) Key จะเริ่มด้วย <code>sk-or-...</code></p>
+      <p><strong style="color:var(--gold)">ขั้นตอนที่ 6:</strong> นำ Key มาวางในช่องด้านบน แล้วกด <strong>"🧪 ทดสอบ"</strong> ถ้าขึ้น ✅ แสดงว่าใช้ได้แล้ว!</p>
+      <p style="margin-top:8px"><strong style="color:var(--blue)">💡 เติมเงิน:</strong> ไปที่ <a href="https://openrouter.ai/credits" target="_blank" class="amazon-link" style="font-size:15px">openrouter.ai/credits</a> กด <strong>"Buy Credits"</strong> เติมขั้นต่ำ $5 จ่ายผ่านบัตรเครดิต (GPT-4o Mini ราคาถูกมาก ใช้ได้นับพันรูป)</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ======================== TAB: REJECTED DB ======================== -->
+<div id="tab-rejected" class="tab-content">
+<div class="container" style="max-width:900px">
+  <div class="panel">
+    <h2>🚫 Rejected Keywords Database</h2>
+    <p style="font-size:24px;color:var(--muted);margin-bottom:12px">เก็บ keyword ที่ถูก Amazon reject ไว้ เพื่อไม่ให้ระบบสร้างซ้ำอีก</p>
+
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" id="rejectedInput" placeholder="Keyword ที่ถูก reject..." style="flex:2">
+      <input type="text" id="rejectedReason" placeholder="เหตุผล..." style="flex:1">
+      <button class="btn btn-primary" onclick="addRejected()">+ เพิ่ม</button>
+    </div>
+
+    <div class="flex-between mb8">
+      <input type="text" class="db-search" id="rejectedSearch" placeholder="🔍 ค้นหา..." style="width:250px" oninput="renderRejectedDB()">
+      <div class="flex-gap">
+        <button class="btn btn-sm btn-blue" onclick="exportDB('rejected')">📤 Export JSON</button>
+        <button class="btn btn-sm btn-green" onclick="importDB('rejected')">📥 Import JSON</button>
+        <span style="font-size:22px;color:var(--muted)" id="rejectedCount">0 รายการ</span>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="max-height:500px">
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th style="width:30px">#</th>
+            <th>Keyword</th>
+            <th style="width:150px">เหตุผล</th>
+            <th style="width:100px">วันที่</th>
+            <th style="width:70px">แหล่งที่มา</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="rejectedBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ======================== TAB: SEASONAL DB ======================== -->
+<div id="tab-seasonal" class="tab-content">
+<div class="container" style="max-width:1000px">
+  <div class="panel">
+    <h2>🔑 เพิ่ม Keyword</h2>
+    <p style="font-size:24px;color:var(--muted);margin-bottom:12px">เพิ่ม Keyword ต่างๆ ตามธีม เช่น คริสมาส, วันเกิด, วาเลนไทน์ เพื่อนำไปใช้ในการ Generate Keyword ให้กับ Title</p>
+
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <select id="seasonSelect" style="width:240px;font-size:15px" onchange="renderSeasonalDB()">
+        <option value="">-- เลือกกลุ่ม Keyword --</option>
+      </select>
+      <input type="text" id="seasonKWInput" placeholder="เพิ่ม keyword..." style="flex:1">
+      <button class="btn btn-primary" onclick="addSeasonalKW()">+ เพิ่ม Keyword</button>
+      <button class="btn btn-green" onclick="addNewSeason()">+ กลุ่มใหม่</button>
+    </div>
+
+    <div class="flex-between mb8">
+      <div class="flex-gap">
+        <button class="btn btn-sm btn-blue" onclick="exportDB('seasonal')">📤 Export</button>
+        <button class="btn btn-sm btn-green" onclick="importDB('seasonal')">📥 Import</button>
+      </div>
+    </div>
+
+    <div id="seasonalContent"></div>
+  </div>
+</div>
+</div>
+
+<!-- ======================== TAB: TRADEMARK DB ======================== -->
+<div id="tab-trademark" class="tab-content">
+<div class="container" style="max-width:900px">
+  <div class="panel">
+    <h2>™️ Trademark / Copyright Database</h2>
+    <p style="font-size:24px;color:var(--muted);margin-bottom:12px">คำที่มีลิขสิทธิ์/เครื่องหมายการค้า ระบบจะกรองออกอัตโนมัติ · กดปุ่ม 🔍 เพื่อตรวจสอบบนเว็บลิขสิทธิ์</p>
+
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" id="tmInput" placeholder="คำ Trademark..." style="flex:2">
+      <select id="tmCategory" style="width:150px">
+        <option value="banned">🚫 Banned Word</option>
+        <option value="brand">Brand</option>
+        <option value="character">Character</option>
+        <option value="slogan">Slogan</option>
+        <option value="sports">Sports Team</option>
+        <option value="celebrity">Celebrity</option>
+        <option value="other">Other</option>
+      </select>
+      <button class="btn btn-primary" onclick="addTrademark()">+ เพิ่ม</button>
+    </div>
+
+    <!-- Quick Trademark Search -->
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+      <label style="font-size:15px;margin-bottom:6px">🔍 ค้นหาลิขสิทธิ์บนเว็บภายนอก</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="tmQuickSearch" placeholder="พิมพ์คำเพื่อค้นหา..." style="flex:1;font-size:16px;padding:10px 12px">
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn" style="background:#1a73e8;color:#fff;padding:8px 16px;font-size:15px" onclick="searchTM('uspto')" title="USPTO (สหรัฐ)">🔍 USPTO <small style="opacity:.7">(สหรัฐ)</small></button>
+        <button class="btn" style="background:#ff6d00;color:#fff;padding:8px 16px;font-size:15px" onclick="searchTM('trademarkia')" title="Trademarkia">🔍 Trademarkia</button>
+        <button class="btn" style="background:#003399;color:#fff;padding:8px 16px;font-size:15px" onclick="searchTM('euipo')" title="EUIPO (ยุโรป)">🔍 EUIPO <small style="opacity:.7">(ยุโรป)</small></button>
+        <button class="btn" style="background:#00695c;color:#fff;padding:8px 16px;font-size:15px" onclick="searchTM('wipo')" title="WIPO (โลก)">🔍 WIPO <small style="opacity:.7">(โลก)</small></button>
+      </div>
+    </div>
+
+    <div class="flex-between mb8">
+      <input type="text" id="tmSearch" placeholder="🔍 ค้นหา..." style="width:250px" oninput="renderTrademarkDB()">
+      <div class="flex-gap">
+        <button class="btn btn-sm btn-blue" onclick="exportDB('trademark')">📤 Export</button>
+        <button class="btn btn-sm btn-green" onclick="importDB('trademark')">📥 Import</button>
+        <span style="font-size:22px;color:var(--muted)" id="tmCount">0 รายการ</span>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="max-height:500px">
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th style="width:30px">#</th>
+            <th>คำ Trademark</th>
+            <th style="width:120px">หมวดหมู่</th>
+            <th style="width:100px">วันที่</th>
+            <th style="width:50px">ค้นหา</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="tmBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ======================== TAB: HISTORY ======================== -->
+<div id="tab-history" class="tab-content">
+<div class="container" style="max-width:1200px">
+  <div class="panel">
+    <h2>📜 ประวัติการทำงาน</h2>
+    <div class="flex-between mb8">
+      <input type="text" id="historySearch" placeholder="🔍 ค้นหา Title, Keyword..." style="width:300px" oninput="renderHistoryDB()">
+      <div class="flex-gap">
+        <button class="btn btn-sm btn-blue" onclick="exportDB('history')">📤 Export</button>
+        <button class="btn btn-sm btn-red" onclick="clearHistory()">🗑️ ล้างประวัติ</button>
+        <span style="font-size:22px;color:var(--muted)" id="historyCount">0 รายการ</span>
+      </div>
+    </div>
+    <div class="table-wrap" style="max-height:500px">
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th style="width:30px">#</th>
+            <th style="width:100px">วันที่</th>
+            <th style="width:120px">รูป</th>
+            <th>Title</th>
+            <th style="width:80px">Keywords</th>
+            <th style="width:60px">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ======================== TAB: SETTINGS ======================== -->
+<div id="tab-settings" class="tab-content">
+<div class="container" style="max-width:700px">
+  <!-- Supabase Cloud Database -->
+  <div class="panel">
+    <h2>☁️ Supabase Cloud Database</h2>
+    <p style="font-size:24px;color:var(--muted);margin-bottom:12px">เชื่อมต่อ Supabase เพื่อเก็บข้อมูลบน Cloud (sync ข้ามอุปกรณ์)</p>
+    <div class="field">
+      <label>Supabase URL</label>
+      <input type="text" id="supabaseUrl" placeholder="https://xxxxx.supabase.co" value="">
+    </div>
+    <div class="field">
+      <label>Supabase Anon Key</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="supabaseKey" placeholder="eyJhbGciOi..." style="flex:1">
+        <button class="btn btn-sm btn-blue" onclick="document.getElementById('supabaseKey').type=document.getElementById('supabaseKey').type==='password'?'text':'password'">👁️</button>
+      </div>
+    </div>
+    <div class="flex-gap mt8">
+      <button class="btn btn-primary" onclick="connectSupabase()">🔗 เชื่อมต่อ Supabase</button>
+      <button class="btn btn-green" onclick="pushToSupabase()">📤 Push ข้อมูลไป Cloud</button>
+      <button class="btn btn-blue" onclick="pullFromSupabase()">📥 Pull จาก Cloud</button>
+    </div>
+    <div id="supabaseStatus" class="mt8"></div>
+  </div>
+
+  <!-- GitHub -->
+  <div class="panel">
+    <h2>🐙 GitHub Sync</h2>
+    <div class="field">
+      <label>GitHub Personal Access Token</label>
+      <input type="password" id="ghToken" placeholder="ghp_...">
+    </div>
+    <div class="field">
+      <label>GitHub Repository (format: username/repo)</label>
+      <input type="text" id="ghRepo" placeholder="username/merch-keywords" value="">
+    </div>
+    <div class="flex-gap mt8">
+      <button class="btn btn-primary" onclick="syncToGitHub()">📤 Push to GitHub</button>
+      <button class="btn btn-blue" onclick="pullFromGitHub()">📥 Pull from GitHub</button>
+    </div>
+  </div>
+
+  <!-- Local Data -->
+  <div class="panel">
+    <h2>💾 ข้อมูลในเครื่อง</h2>
+    <div class="stats-bar">
+      <div class="stat-item">Rejected: <span class="stat-num" id="setRejCount">0</span></div>
+      <div class="stat-item">Keywords: <span class="stat-num" id="setSeaCount">0</span></div>
+      <div class="stat-item">Trademark: <span class="stat-num" id="setTMCount">0</span></div>
+      <div class="stat-item">History: <span class="stat-num" id="setHistCount">0</span></div>
+    </div>
+    <div class="flex-gap mt8">
+      <button class="btn btn-blue" onclick="exportAllDB()">📤 Export All (JSON)</button>
+      <button class="btn btn-green" onclick="importAllDB()">📥 Import All (JSON)</button>
+      <button class="btn btn-red" onclick="resetAllDB()">🗑️ Reset ทั้งหมด</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Image Preview Modal -->
+<div id="previewModal" class="modal-overlay hidden" onclick="this.classList.add('hidden')">
+  <img id="previewImg" src="" style="max-width:90%;max-height:90%;border-radius:8px">
+</div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="importFileInput" accept=".json" style="display:none">
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let selectedAPI = 'openrouter';
+let uploadedImages = [];
+let results = [];
+const collapsedCols = { bp1:false, bp2:false, desc:true };
+
+// ============================================================
+// DATABASE LAYER (localStorage)
+// ============================================================
+const DB = {
+  get(key, def=[]) { try { return JSON.parse(localStorage.getItem('merch_'+key)) || def; } catch(e) { return def; } },
+  set(key, val) { localStorage.setItem('merch_'+key, JSON.stringify(val)); },
+
+  getRejected() { return this.get('rejected', []); },
+  setRejected(v) { this.set('rejected', v); },
+
+  getSeasonal() { return this.get('seasonal', this.defaultSeasonal()); },
+  setSeasonal(v) { this.set('seasonal', v); },
+
+  getTrademark() { return this.get('trademark', this.defaultTrademark()); },
+  setTrademark(v) { this.set('trademark', v); },
+
+  getHistory() { return this.get('history', []); },
+  setHistory(v) { this.set('history', v); },
+
+  getSettings() { return this.get('settings', { bp1:true, bp2:true, desc:false, brand:'', api:'openrouter', apiKey:'' }); },
+  setSettings(v) { this.set('settings', v); },
+
+  defaultSeasonal() {
+    return [
+      { id:'s1', season:"Valentine's Day", keywords:["Valentine Gift","Love","Couples","Valentines Day","Heart","Be My Valentine"], activeMonths:[1,2] },
+      { id:'s2', season:"St. Patrick's Day", keywords:["St Patricks Day","Irish","Shamrock","Lucky","Green Clover"], activeMonths:[2,3] },
+      { id:'s3', season:"Easter", keywords:["Easter","Easter Bunny","Happy Easter","Easter Egg","Easter Basket"], activeMonths:[3,4] },
+      { id:'s4', season:"Mother's Day", keywords:["Mom","Best Mom","Mothers Day","Mom Life","Mama"], activeMonths:[4,5] },
+      { id:'s5', season:"Father's Day", keywords:["Dad","Best Dad","Fathers Day","Dad Joke","Papa"], activeMonths:[5,6] },
+      { id:'s6', season:"4th of July", keywords:["4th Of July","Patriotic","American Flag","USA","Independence Day","Merica"], activeMonths:[6,7] },
+      { id:'s7', season:"Halloween", keywords:["Halloween","Spooky","Trick Or Treat","Witch","Pumpkin","Scary","Ghost"], activeMonths:[8,9,10] },
+      { id:'s8', season:"Thanksgiving", keywords:["Thanksgiving","Thankful","Turkey","Grateful","Fall"], activeMonths:[10,11] },
+      { id:'s9', season:"Christmas", keywords:["Christmas","Merry Christmas","Santa","Xmas","Holiday","Ugly Christmas"], activeMonths:[10,11,12] },
+      { id:'s10', season:"New Year", keywords:["New Year","Happy New Year","New Years Eve","2026","Cheers"], activeMonths:[11,12,1] }
+    ];
+  },
+
+  defaultTrademark() {
+    return [
+      "Disney","Marvel","DC Comics","Star Wars","Pokemon","Nintendo","Mickey Mouse","Spider-Man","Batman","Superman",
+      "Hello Kitty","Sanrio","Nike","Adidas","Puma","Reebok","Under Armour","Gucci","Louis Vuitton","Chanel",
+      "Coca-Cola","Pepsi","McDonald's","Starbucks","Apple","Google","Amazon","Microsoft","Netflix","Tesla",
+      "Ferrari","Lamborghini","Porsche","BMW","Mercedes","Audi","Toyota","Honda","Ford","Chevrolet",
+      "NFL","NBA","MLB","NHL","FIFA","UFC","WWE","Olympics","Super Bowl",
+      "Harry Potter","Lord of the Rings","Game of Thrones","Stranger Things","The Simpsons","Family Guy","South Park",
+      "Mario","Luigi","Zelda","Pikachu","Sonic","Minecraft","Fortnite","Roblox","Call of Duty",
+      "Barbie","LEGO","Hot Wheels","Transformers","Power Rangers","Teenage Mutant Ninja Turtles",
+      "Just Do It","I'm Lovin' It","Think Different","Have a Break","Red Bull",
+      "Taylor Swift","BTS","Beyonce","Drake","Eminem","Michael Jackson","Elvis Presley",
+      "Winnie the Pooh","Frozen","Elsa","Moana","Lion King","Toy Story","Finding Nemo",
+      "Peppa Pig","Paw Patrol","Bluey","Cocomelon","Baby Shark",
+      "Supreme","Off-White","Balenciaga","Versace","Prada","Dior","Hermes","Fendi","Burberry",
+      "Playboy","Hustler","Hooters","Jack Daniels","Budweiser","Corona","Heineken","Johnnie Walker",
+      "Dallas Cowboys","New York Yankees","Los Angeles Lakers","Manchester United","Real Madrid","Barcelona",
+      "Tom and Jerry","Scooby Doo","Looney Tunes","Bugs Bunny","Tweety","SpongeBob","Dora the Explorer",
+      "NASA","FBI","CIA","US Army","Marines","Air Force","Navy","USMC"
+    ].map((t,i) => ({ id:'tm_'+i, term:t, category:'brand', dateAdded:new Date().toISOString().slice(0,10) }));
+  }
+};
+
+// ============================================================
+// COLUMN TOGGLE
+// ============================================================
+function toggleColumn(col) {
+  collapsedCols[col] = !collapsedCols[col];
+  renderResults();
+  // Update header styles
+  document.querySelectorAll('.col-'+col).forEach(el => {
+    el.classList.toggle('col-collapsed', collapsedCols[col]);
+    if(collapsedCols[col]) el.innerHTML = col.toUpperCase().replace('DESC','Desc');
+    else {
+      const labels = {bp1:'BP1 <small>▼</small>', bp2:'BP2 <small>▼</small>', desc:'Description <small>▼</small>'};
+      el.innerHTML = labels[col];
+    }
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  loadToggles();
+  renderImages();
+  renderRejectedDB();
+  renderSeasonalDB();
+  renderTrademarkDB();
+  renderHistoryDB();
+  updateSettingsStats();
+  populateSeasonSelect();
+
+  // Load saved settings
+  const s = DB.getSettings();
+  if(s.brand) document.getElementById('brandName').value = s.brand;
+  if(s.apiKey) document.getElementById('apiKey').value = s.apiKey;
+  selectedAPI = 'openrouter'; selectAPI('openrouter');
+  updateAPIStatus();
+}
+
+// ============================================================
+// TAB NAVIGATION
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.main-tab').forEach((el,i) => {
+    const tabs = ['generator','apiconfig','rejected','seasonal','trademark','history','settings'];
+    el.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+// ============================================================
+// API SELECTION
+// ============================================================
+function selectAPI(api) {
+  // Locked to OpenRouter only
+  selectedAPI = 'openrouter';
+  const s = DB.getSettings(); s.api = 'openrouter'; DB.setSettings(s);
+  updateAPIStatus();
+}
+
+function toggleShowKey() {
+  const input = document.getElementById('apiKey');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+async function testAPIKey() {
+  const key = document.getElementById('apiKey').value;
+  if(!key) { showAPITestResult('❌ กรุณาใส่ API Key ก่อน','error'); return; }
+  showAPITestResult('<span class="spinner"></span> กำลังทดสอบ...','info');
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/auth/key',{headers:{'Authorization':'Bearer '+key}});
+    if(r.ok) { const d = await r.json(); showAPITestResult('✅ OpenRouter OK! Credit: $'+(d.data?.limit_remaining||'N/A'),'success'); }
+    else throw new Error('Invalid key');
+  } catch(e) { showAPITestResult('❌ ทดสอบไม่ผ่าน: '+e.message,'error'); }
+}
+
+function showAPITestResult(msg, type) {
+  const el = document.getElementById('apiTestResult');
+  el.classList.remove('hidden');
+  el.innerHTML = `<div class="status-box status-${type}">${msg}</div>`;
+  if(type!=='info') setTimeout(()=>el.classList.add('hidden'), 5000);
+}
+
+function updateAPIStatus() {
+  const key = document.getElementById('apiKey')?.value;
+  const miniProv = document.getElementById('apiMiniProvider');
+  const settingsLink = document.querySelector('#apiMiniStatus > a');
+  if(miniProv) {
+    if(key) {
+      miniProv.innerHTML = `🟢 <strong style="color:var(--green)">AI พร้อมทำงาน</strong>`;
+      if(settingsLink) settingsLink.textContent = 'ตั้งค่า AI →';
+    } else {
+      miniProv.innerHTML = `🔴 <strong style="color:var(--red)">AI ยังไม่พร้อมทำงาน</strong>`;
+      if(settingsLink) settingsLink.textContent = 'ตั้งค่า AI →';
+    }
+  }
+}
+
+function applyBrandToKeywords() {
+  const brand = document.getElementById('brandName').value.trim();
+  if(!brand) {
+    alert('กรุณาใส่ชื่อ Brand ก่อน');
+    return;
+  }
+  // Save brand to settings
+  const s = DB.getSettings();
+  s.brand = brand;
+  DB.setSettings(s);
+  // Update brand in all existing results
+  if(results && results.length > 0) {
+    results.forEach(r => { r.brand = brand; });
+    renderResults();
+    alert('✅ ใช้ Brand "' + brand + '" กับผลลัพธ์ทั้งหมดแล้ว!');
+  } else {
+    alert('✅ บันทึก Brand "' + brand + '" แล้ว จะใช้ตอนสร้าง Keywords ครั้งถัดไป');
+  }
+}
+
+// ============================================================
+// TOGGLES
+// ============================================================
+function saveToggles() {
+  const s = DB.getSettings();
+  s.bp1 = document.getElementById('toggleBP1').checked;
+  s.bp2 = document.getElementById('toggleBP2').checked;
+  s.desc = document.getElementById('toggleDesc').checked;
+  DB.setSettings(s);
+}
+function loadToggles() {
+  const s = DB.getSettings();
+  document.getElementById('toggleBP1').checked = s.bp1 !== false;
+  document.getElementById('toggleBP2').checked = s.bp2 !== false;
+  document.getElementById('toggleDesc').checked = s.desc === true;
+  document.getElementById('toggleAIBrand').checked = s.aiBrand === true;
+}
+function toggleAIBrandFn() {
+  const on = document.getElementById('toggleAIBrand').checked;
+  const inp = document.getElementById('brandName');
+  inp.disabled = on;
+  inp.style.opacity = on ? '0.4' : '1';
+  inp.placeholder = on ? 'AI จะสร้าง Brand Name ให้อัตโนมัติ' : 'ชื่อแบรนด์ของคุณ';
+  const s = DB.getSettings(); s.aiBrand = on; DB.setSettings(s);
+}
+
+// ============================================================
+// BRAND INPUT
+// ============================================================
+document.getElementById('brandName').addEventListener('input', function() {
+  const len = this.value.length;
+  const el = document.getElementById('brandCount');
+  el.textContent = len + '/50';
+  el.className = 'char-count ' + (len > 50 ? 'char-over' : 'char-ok');
+  const s = DB.getSettings(); s.brand = this.value; DB.setSettings(s);
+});
+
+// ============================================================
+// IMAGE HANDLING
+// ============================================================
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  Array.from(e.target.files).forEach(f => {
+    if(!f.type.startsWith('image/')) return;
+    uploadedImages.push({ file:f, url:URL.createObjectURL(f), name:f.name, selected:true });
+  });
+  renderImages();
+});
+
+document.getElementById('folderInput').addEventListener('change', function(e) {
+  Array.from(e.target.files).forEach(f => {
+    if(!f.type.startsWith('image/')) return;
+    uploadedImages.push({ file:f, url:URL.createObjectURL(f), name:f.name, selected:true });
+  });
+  renderImages();
+});
+
+function renderImages() {
+  const grid = document.getElementById('imagesGrid');
+  grid.innerHTML = '';
+  uploadedImages.forEach((img,i) => {
+    const div = document.createElement('div');
+    div.className = 'img-thumb' + (img.selected ? ' selected' : '');
+    div.innerHTML = `<img src="${img.url}" onclick="event.stopPropagation();previewImage('${img.url}')"><div class="check">✓</div><div class="fname">${img.name}</div><div class="img-delete" onclick="event.stopPropagation();deleteImage(${i})" title="ลบรูปนี้">✕</div>`;
+    div.onclick = () => { img.selected = !img.selected; renderImages(); };
+    grid.appendChild(div);
+  });
+  const sel = uploadedImages.filter(i => i.selected).length;
+  document.getElementById('imgCount').textContent = sel ? `${sel}/${uploadedImages.length} รูปถูกเลือก` : 'ยังไม่ได้เลือกรูป';
+  const ready = sel > 0 && !!document.getElementById('apiKey').value;
+  document.getElementById('btnGenerate').disabled = !ready;
+  if(ready) document.getElementById('btnGenerate').classList.add('btn-generate-ready');
+  else document.getElementById('btnGenerate').classList.remove('btn-generate-ready');
+}
+function selectAllImages() { uploadedImages.forEach(i => i.selected = true); renderImages(); }
+function deselectAllImages() { uploadedImages.forEach(i => i.selected = false); renderImages(); }
+function deleteImage(idx) {
+  const img = uploadedImages[idx];
+  // Also remove matching result from results table
+  const rIdx = results.findIndex(r => r.imagePath === img.name && r.imageUrl === img.url);
+  if(rIdx !== -1) results.splice(rIdx, 1);
+  URL.revokeObjectURL(img.url);
+  uploadedImages.splice(idx, 1);
+  renderImages();
+  renderResults();
+  refreshStats();
+}
+function deleteSelectedImages() {
+  const selected = uploadedImages.filter(i => i.selected);
+  if(!selected.length) { showStatus('⚠️ ยังไม่ได้เลือกรูปที่จะลบ', 'error'); return; }
+  if(!confirm(`ต้องการลบ ${selected.length} รูปที่เลือกออกจากโปรแกรม?`)) return;
+  // Remove matching results
+  selected.forEach(img => {
+    const rIdx = results.findIndex(r => r.imagePath === img.name && r.imageUrl === img.url);
+    if(rIdx !== -1) results.splice(rIdx, 1);
+    URL.revokeObjectURL(img.url);
+  });
+  // Keep only unselected images
+  uploadedImages = uploadedImages.filter(i => !i.selected);
+  renderImages();
+  renderResults();
+  refreshStats();
+  showStatus(`🗑️ ลบ ${selected.length} รูปเรียบร้อย`, 'success');
+}
+function refreshStats() {
+  if(!results.length) {
+    document.getElementById('statsBar').classList.add('hidden');
+    document.getElementById('btnExport').disabled = true;
+    document.getElementById('btnClear').disabled = true;
+    document.getElementById('btnCheckTM').disabled = true;
+    return;
+  }
+  document.getElementById('statTotal').textContent = results.length;
+  document.getElementById('statDone').textContent = results.filter(r=>r.status==='done').length;
+}
+function previewImage(url) {
+  document.getElementById('previewImg').src = url;
+  document.getElementById('previewModal').classList.remove('hidden');
+}
+document.getElementById('apiKey').addEventListener('input', function() {
+  renderImages();
+  updateAPIStatus();
+  // Save key to settings
+  const s = DB.getSettings(); s.apiKey = this.value; DB.setSettings(s);
+});
+
+// ============================================================
+// IMAGE TO BASE64
+// ============================================================
+function imageToBase64(file) {
+  return new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result.split(',')[1]); rd.readAsDataURL(file); });
+}
+
+// ============================================================
+// AI ANALYSIS (Multi-task: Keywords, Safety, Content)
+// ============================================================
+async function analyzeImage(file) {
+  const apiKey = document.getElementById('apiKey').value;
+  const base64 = await imageToBase64(file);
+  const mime = file.type || 'image/png';
+  const bp1On = document.getElementById('toggleBP1').checked;
+  const bp2On = document.getElementById('toggleBP2').checked;
+  const descOn = document.getElementById('toggleDesc').checked;
+
+  const aiBrandOn = document.getElementById('toggleAIBrand').checked;
+
+  // Get custom keywords from the keyword database (formerly seasonal)
+  const customKWDB = DB.getSeasonal();
+  const customKWList = customKWDB.flatMap(s => s.keywords || []).join(', ');
+  const customKWNote = customKWList ? `\nUser has these custom keywords to consider incorporating if relevant: ${customKWList}` : '';
+
+  // Get required keywords that MUST appear in every Title
+  const requiredTitleKWs = getRequiredTitleKeywords();
+  const requiredTitleNote = requiredTitleKWs.length > 0 ? `\n⚠️ MANDATORY: The following keywords MUST appear in EVERY title: ${requiredTitleKWs.join(', ')}. Work these words naturally into the title while still following the 50-60 character limit.` : '';
+
+  const prompt = `You are an expert Amazon Merch on Demand keyword researcher and product listing specialist.
+You deeply understand Amazon's listing policies and SEO best practices.
+
+## CRITICAL MINDSET: Think like a BUYER, not a seller!
+Before writing ANY keyword or title, ask yourself: "Would a real person type this into Amazon search?"
+
+### Buyer Thinking Rules:
+1. **Buyers search by WHAT they see** — They type what the design shows: "funny cat playing guitar", "skull with roses", "fishing dad joke". They do NOT type "awesome design" or "cool art" or "premium quality".
+2. **Buyers search by WHO they are buying for** — They add audience words: "for mom", "for dad", "nurse", "teacher", "grandpa", "cat lover", "plant lady". Use these as secondary keywords.
+3. **Buyers search by WHEN/WHY** — They add occasion words: "birthday", "christmas", "retirement", "valentines day", "fathers day", "mothers day", "halloween". Use these to fill title to 60 chars.
+4. **Buyers search by STYLE** — They type style words: "retro", "vintage", "minimalist", "distressed", "80s", "90s", "japanese". Match these to the actual design style.
+5. **Buyers NEVER search for** — "gift idea", "cool design", "awesome art", "perfect present", "unique", "special", "premium", "bestseller". These are SELLER words, not BUYER words. NEVER use them.
+6. **Read the design text FIRST** — If the shirt says "I'd Rather Be Fishing", that exact phrase is what buyers will search. Use it as the PRIMARY keyword, then add: audience (Dad, Grandpa), occasion (Birthday, Fathers Day), style (Retro, Funny).
+7. **The Amazon search bar test** — Imagine typing your keyword into Amazon's search bar. Would autocomplete suggest it? If not, real buyers probably don't search for it.
+8. **Specific beats generic** — "Funny Black Cat Playing Piano Jazz Lover" beats "Cat Music Lover" because specific long-tail keywords have less competition and higher conversion.
+
+Analyze this t-shirt design image and perform ALL of the following tasks:
+
+## TASK A: Design Element Detection
+First, carefully identify ALL elements in the design:
+- Text/words written on the design (exact text) — THIS IS YOUR PRIMARY KEYWORD SOURCE
+- Animals (e.g., cat, dog, dinosaur, unicorn, etc.)
+- Objects (e.g., guitar, camera, coffee cup, mountain, etc.)
+- Characters or people
+- Symbols or icons
+- Main theme, style, target audience, occasion/festival
+List these as detectedElements in your response.
+
+## TASK B: SEO Keywords (CRITICAL - Follow Amazon Merch Rules)
+Generate 8-12 long-tail keyword phrases based on detected elements.
+
+### MANDATORY RULES for Keywords:
+- Keywords should describe the DESIGN CONTENT, theme, audience, and occasion
+- PRIORITY: Text on the design = Primary Keyword. Build other keywords around it.
+- DO NOT include clothing type words: T-Shirt, Shirt, Tee, Tee-Shirt, Hoodie, Sweatshirt, Tank Top, Top, Apparel, Clothing, Wear, Outfit, Garment (Amazon adds these automatically)
+- DO NOT include print quality/effect words: Gold, Silver, Glitter, Sparkle, Shimmer, Metallic, Holographic, Rhinestone, Sequin, Embossed, Foil, Neon, Glow-in-the-dark, 3D, Embroidered, Bedazzled, Jeweled (DTG printers CANNOT produce these)
+- DO NOT include filler words that buyers never search: Gift, Design, Art, Cool, Awesome, Perfect, Amazing, Best, Great, Nice, Beautiful, Cute, Idea, Premium, Unique, Special
+- DO NOT include fabric/material words: Cotton, Polyester, Soft, Lightweight, Comfortable, Breathable
+- DO NOT include promotional words: Sale, Discount, Free Shipping, Limited, Guarantee, #1, Top Rated, Bestseller, New
+- ONLY use characters: A-Z, a-z, 0-9, and spaces. NO emoji, NO special symbols, NO accented characters (e, n, u)
+- DO use: niche + audience + occasion format
+- Mix broad keywords with niche long-tail keywords
+- Each keyword should read naturally, like what a real customer would search for
+- Detect if design relates to a seasonal/occasion theme (Valentine's Day, Easter, Halloween, Christmas, Birthday, etc.)
+${customKWNote}
+
+## TASK C: Title Generation (ABSOLUTE REQUIREMENT - EXACTLY 55-60 characters!)
+Amazon Merch titles have a 60-character limit. The title is the MOST important SEO element.
+${requiredTitleNote}
+
+### ⚠️ CHARACTER COUNT IS NON-NEGOTIABLE:
+- You MUST count every character carefully. Count spaces too!
+- TARGET: EXACTLY 57-60 characters (as close to 60 as possible)
+- ABSOLUTE MINIMUM: 55 characters. NEVER generate a title below 55!
+- If your title is under 55 chars, you MUST add more keywords until it reaches 57-60
+- After writing the title, COUNT IT CHARACTER BY CHARACTER before submitting
+
+### Title Formula (USE THIS EVERY TIME):
+[Primary KW from design text] + [Secondary KW 1] + [Secondary KW 2] + [Audience] + [Occasion/Style]
+
+### How to fill 60 characters:
+- Start with design text as Primary KW
+- Add descriptive secondary keywords: Funny, Retro, Vintage, Humor, Lover
+- Add audience: Mom, Dad, Kids, Women, Men, Boys, Girls, Grandpa, Grandma, Sister, Brother, Nurse, Teacher, Engineer
+- Add occasion: Birthday, Christmas, Halloween, Fathers Day, Mothers Day, Graduation, Retirement, Anniversary, Easter, Valentines
+- Add style: Retro, Vintage, 80s, 90s, Minimalist, Japanese, Gothic, Boho, Tribal, Western, Country
+- KEEP ADDING keywords until you hit 57-60 characters!
+
+### Banned words in Title (DO NOT USE):
+- Clothing: T-Shirt, Shirt, Tee, Hoodie (Amazon adds automatically)
+- Filler: Gift, Design, Art, Cool, Awesome, Perfect, Amazing, Idea, Beautiful, Cute, Premium, Unique, Special
+- Effects: Gold, Silver, Glitter, Neon, Metallic (DTG cant print these)
+- ONLY allowed characters: A-Z, a-z, 0-9, and spaces
+
+### GOOD Title Examples (STUDY THESE - notice they are all 55-60 chars):
+- "Maybe Plants Are Addicted To Me Funny Skull Plant Lover Mom" (59 chars) ✅
+- "Puerto Rican Princess Heritage Boricua Pride Girls Birthday" (59 chars) ✅
+- "Funny Fishing Rod Bass Angler Lake Life Retirement Dad Humor" (60 chars) ✅
+- "Retro Sunset Palm Trees 80s Vaporwave Beach Vibes Summer Dad" (60 chars) ✅
+- "Crazy Plant Lady Succulent Cactus Garden Lover Mom Birthday" (59 chars) ✅
+
+### BAD Title Examples (NEVER DO THIS):
+- "Puerto Rican Princess Birthday for Girls" (40 chars) ❌ TOO SHORT! Missing 20 characters of keywords!
+- "Plants Are Addicted To Me" (25 chars) ❌ WASTES 35 characters!
+- "Funny Cat Dad Birthday Gift Idea" ❌ Contains banned words "Gift" and "Idea"
+- "Cat Lover" (9 chars) ❌ EXTREMELY too short!
+
+### If title is too short, use this checklist to ADD more words:
+1. Add audience keyword (Mom, Dad, etc.) — adds 3-6 chars
+2. Add occasion keyword (Birthday, Christmas) — adds 8-9 chars
+3. Add style keyword (Retro, Vintage, Funny) — adds 5-7 chars
+4. Add descriptive keyword (Lover, Humor, Pride) — adds 5-6 chars
+5. REPEAT until you reach 57-60 characters!
+
+## TASK D: Content Safety Check
+Analyze the design for restricted content:
+- Sexual content or suggestive imagery
+- Drug references (including cannabis/marijuana/weed)
+- Alcohol/intoxicating beverages
+- Violence of any kind
+- Weapons: knives, guns, crossbows, sharp objects
+
+If ANY restricted content is found: type = "man, woman"
+If NO restricted content: type = "man, woman, youth, girls"
+
+## TASK E: Content Generation — MAXIMIZE CHARACTER USAGE!
+
+### ⚠️ CHARACTER COUNT TARGETS ARE CRITICAL:
+${bp1On ? `### Bullet Point 1 (MUST be 230-250 characters!)
+- TARGET: 240-250 characters. NEVER write less than 230!
+- STRUCTURE: [Who is this for] + [What makes it special] + [Long-tail keyword phrases] + [Emotional appeal]
+- USE these Amazon long-tail keyword patterns naturally in sentences:
+  * "[animal/object] lover" phrases (cat lover, plant mom, dog dad)
+  * "[hobby] enthusiast" phrases (fishing enthusiast, guitar player)
+  * "[occasion] celebration" phrases (birthday celebration, retirement party, graduation day)
+  * "[style] design" phrases (retro vintage, Japanese art, tribal pattern)
+- PACK keywords into natural sentences — every word should be searchable on Amazon
+- Example BP1 (247 chars): "Show your Puerto Rican heritage and Boricua pride with this eye catching princess crown design celebrating Caribbean island culture and Latin roots for girls who love expressing their identity at birthday parties school events and family gatherings"
+` : '- Skip Bullet Point 1'}
+${bp2On ? `### Bullet Point 2 (MUST be 230-250 characters!)
+- TARGET: 240-250 characters. NEVER write less than 230!
+- STRUCTURE: [Occasion/gift use] + [Who to give it to] + [More long-tail keywords] + [Call to action]
+- DIFFERENT from BP1 — focus on GIFTING and OCCASIONS:
+  * "[relationship] for [occasion]" (for mom on mothers day, for dad on fathers day)
+  * "[holiday/event] celebration" (christmas stocking stuffer, halloween costume party)
+  * "[group] matching" (family reunion, group trip, team building)
+- PACK more searchable phrases: Think what buyers type on Amazon search bar
+- Example BP2 (244 chars): "Makes a wonderful surprise for daughters nieces and granddaughters who celebrate their Puerto Rican roots and Caribbean heritage at family reunions cultural festivals independence day parades and school multicultural events throughout the year"
+` : '- Skip Bullet Point 2'}
+${descOn ? `### Description (MUST be 1500-2000 characters!)
+- TARGET: 1800-2000 characters. NEVER write less than 1500!
+- STRUCTURE (write 6-8 paragraphs):
+  Paragraph 1: Hook — What is this design about? Use primary keywords.
+  Paragraph 2: Who is it for? List MANY specific audiences with long-tail keyword phrases.
+  Paragraph 3: Occasions — Birthday, Christmas, Halloween, Valentines Day, Mothers Day, Fathers Day, Graduation, Retirement, Anniversary, Back to School, Family Reunion...
+  Paragraph 4: Design details — Colors, elements, mood, style. Use searchable adjectives.
+  Paragraph 5: Gift guide — Who would love receiving this? Mom, Dad, Sister, Brother, Grandpa, Grandma, Best Friend, Coworker, Teacher, Nurse, Boss...
+  Paragraph 6: More occasions and use cases — everyday wear, conversation starter, group events.
+  Paragraph 7: Emotional appeal — express identity, show pride, make a statement, stand out.
+  Paragraph 8: Final call — celebration of [theme], expressing [value], sharing [passion].
+- EVERY sentence must contain at least one searchable Amazon keyword phrase
+- Use long-tail keywords from the design analysis throughout
+- Example keyword phrases to weave in: "[theme] lover", "[animal] mom/dad", "[hobby] enthusiast", "[culture] pride", "[season] celebration", "[relationship] appreciation"
+` : '- Skip Description'}
+
+### Content Rules (APPLIES TO ALL — BP1, BP2, Description):
+- DO NOT mention: product type (shirt/tee/hoodie), fabric (cotton/polyester), print quality, shipping, discounts, prices
+- DO NOT use ANY banned words from the 5 categories (clothing, filler, effects, promo, inappropriate)
+- DO NOT use trademarked names, celebrity names, copyrighted characters, team names
+- DO NOT keyword-stuff — sentences must read naturally (read aloud test)
+- ONLY use characters: A-Z, a-z, 0-9, spaces, and basic punctuation (. , ! ?)
+- Focus on: design theme, target audience, occasions, emotional appeal, searchable phrases
+- Think like a BUYER: What would someone type on Amazon to find this design?
+
+${aiBrandOn ? `## TASK F: Brand Name (MUST be 35-50 characters!)
+- Generate a creative, memorable brand name that is EXACTLY 35-50 characters long
+- The brand name should be a KEYWORD-RICH phrase related to the design niche
+- Brand name is ALSO an SEO opportunity — use searchable words buyers would type
+- DO NOT just use 2 short words like "Cultural Kids" (13 chars) — that wastes 37 characters!
+- DO NOT use trademarked names, celebrity names, or copyrighted terms
+- ONLY use characters: A-Z, a-z, 0-9, and spaces
+- Brand MUST be DIFFERENT from Title (never copy the title as brand)
+
+### GOOD Brand Examples (35-50 chars):
+- "Puerto Rican Heritage Pride Culture Designs" (44 chars) ✅
+- "Funny Animal Lover Humor Collections Studio" (44 chars) ✅
+- "Retro Vintage Sunset Vibes Apparel Brand" (41 chars) ✅
+- "Plant Mom Succulent Garden Lover Prints" (39 chars) ✅
+
+### BAD Brand Examples:
+- "Cultural Kids" (13 chars) ❌ TOO SHORT! Wastes 37 chars of SEO!
+- "My Brand" (8 chars) ❌ Not descriptive, no SEO value
+- "Designs" (7 chars) ❌ Too generic and short` : ''}
+
+## IMPORTANT: Return ONLY valid JSON in this exact format:
+{
+  "keywords": ["Funny Cat Lover Gift Dad", "Retro Music Guitar Vintage Birthday"],
+  "suggestedTitle": "Funny Cat Playing Guitar Retro Music Lover Dad Gift",
+  "detectedSeason": "Christmas" or null,
+  "detectedElements": {
+    "text": "exact text on shirt",
+    "animals": ["cat", "dog"],
+    "objects": ["guitar", "mountain"],
+    "characters": [],
+    "symbols": []
+  },
+  "contentSafety": {
+    "isSafe": true,
+    "flags": [],
+    "type": "man, woman, youth, girls"
+  },
+  "bulletPoint1": "..." or "",
+  "bulletPoint2": "..." or "",
+  "description": "..." or ""${aiBrandOn ? ',\n  "suggestedBrand": "Creative Brand Name"' : ''}
+}`;
+
+  // Use OpenRouter with GPT-4o Mini (locked)
+  const model = 'openai/gpt-4o-mini';
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+apiKey,
+      'HTTP-Referer':window.location.href,
+      'X-Title':'Amazon Merch Keyword Generator'
+    },
+    body:JSON.stringify({
+      model: model,
+      messages:[
+        {role:'system',content:'You are an expert Amazon Merch on Demand analyst. Always respond with valid JSON only.'},
+        {role:'user',content:[
+          {type:'text',text:prompt},
+          {type:'image_url',image_url:{url:'data:'+mime+';base64,'+base64}}
+        ]}
+      ],
+      max_tokens:2000,
+      temperature:0.7
+    })
+  });
+  const data = await res.json();
+  if(data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  return parseAIResponse(data.choices[0].message.content);
+}
+
+function parseAIResponse(content) {
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if(jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        keywords: parsed.keywords || [],
+        suggestedTitle: parsed.suggestedTitle || '',
+        detectedSeason: parsed.detectedSeason || null,
+        detectedElements: parsed.detectedElements || {},
+        contentSafety: parsed.contentSafety || { isSafe:true, flags:[], type:'man, woman, youth, girls' },
+        bulletPoint1: parsed.bulletPoint1 || '',
+        bulletPoint2: parsed.bulletPoint2 || '',
+        description: parsed.description || '',
+        suggestedBrand: parsed.suggestedBrand || ''
+      };
+    } catch(e) {}
+  }
+  // Fallback
+  const keywords = [];
+  content.split('\n').forEach(l => {
+    const m = l.match(/["']([^"']*T-Shirt[^"']*)["']/i);
+    if(m) keywords.push(m[1]);
+  });
+  return {
+    keywords,
+    suggestedTitle: keywords[0] || 'T-Shirt Design',
+    detectedSeason: null,
+    detectedElements: {},
+    contentSafety: { isSafe:true, flags:[], type:'man, woman, youth, girls' },
+    bulletPoint1:'', bulletPoint2:'', description:'', suggestedBrand:''
+  };
+}
+
+// ============================================================
+// AUTO-EXPAND: ขยาย BP1/BP2/Description ที่สั้นเกินไป
+// ============================================================
+
+async function expandContentAI(currentText, fieldName, targetMin, targetMax, title, keywords, validKeywords) {
+  const apiKey = DB.getSettings()?.apiKey;
+  if(!apiKey) return currentText;
+
+  const kwList = [...(keywords||[]), ...(validKeywords||[])].slice(0,15).join(', ');
+
+  const prompt = `You are an Amazon Merch on Demand SEO content writer.
+
+CURRENT ${fieldName}: "${currentText}"
+CURRENT LENGTH: ${currentText.length} characters
+TARGET LENGTH: ${targetMin}-${targetMax} characters
+TITLE: "${title}"
+RELATED KEYWORDS: ${kwList}
+
+YOUR TASK: REWRITE and EXPAND the ${fieldName} to be ${targetMin}-${targetMax} characters.
+
+RULES:
+- MUST be ${targetMin}-${targetMax} characters (count carefully!)
+- Weave Amazon long-tail keyword phrases naturally: "[theme] lover", "[animal] mom/dad", "[hobby] enthusiast", "[culture] pride", "[occasion] celebration"
+- Every sentence must contain at least one searchable keyword phrase
+- DO NOT use these BANNED words: gift, design, art, cool, awesome, perfect, amazing, best, great, nice, beautiful, cute, idea, premium, unique, special, wonderful, fantastic, excellent, ideal, stylish, trendy, fashionable, shirt, tee, hoodie, cotton, polyester, fabric, quality, print, gold, silver, glitter, neon, sale, discount
+- DO NOT mention product type, fabric, print quality, shipping, or prices
+- Write naturally flowing sentences that a buyer would want to read
+- Use ONLY: A-Z, a-z, 0-9, spaces, periods, commas, exclamation marks, question marks, apostrophes
+${fieldName === 'Description' ? `
+- Write 6-8 paragraphs covering: design theme, target audience (specific people), occasions (birthday, Christmas, Mothers Day, Fathers Day, graduation, retirement, anniversary, family reunion), emotional appeal, why someone would want this
+- List MANY specific recipients: mom, dad, sister, brother, grandpa, grandma, daughter, son, niece, nephew, aunt, uncle, coworker, teacher, nurse, friend
+- List MANY occasions and use cases throughout` : `
+- Write 2-3 flowing sentences packed with searchable keyword phrases
+- Focus on WHO would want this and WHY/WHEN`}
+
+RETURN ONLY the expanded text, nothing else. No quotes, no explanation.`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: fieldName === 'Description' ? 2000 : 400,
+        temperature: 0.7
+      })
+    });
+    const data = await res.json();
+    const expanded = (data.choices?.[0]?.message?.content || '').trim();
+    if(expanded.length > currentText.length) {
+      return expanded.substring(0, targetMax);
+    }
+  } catch(e) {
+    console.warn('expandContentAI error:', e);
+  }
+  return currentText;
+}
+
+// ============================================================
+// BANNED WORDS LIST — ครบ 5 หมวดตามสกิล Keyword Title Amazon
+// ============================================================
+
+// หมวด 1: คำประเภทเสื้อผ้า (Amazon เติมให้อัตโนมัติ)
+const BANNED_CLOTHING = [
+  'tee','t-shirt','tshirt','shirt','hoodie','sweatshirt','tank top','tanktop',
+  'top','apparel','clothing','wear','outfit','garment','jersey','pullover',
+  'crewneck','crew neck','long sleeve','longsleeve','raglan','polo'
+];
+
+// หมวด 2: คำ Filler ทั่วไป (ผู้ซื้อไม่ค้นหาคำเหล่านี้)
+const BANNED_FILLER = [
+  'gift','design','art','cool','awesome','perfect','amazing','best','great',
+  'nice','beautiful','cute','idea','premium','unique','special','wonderful',
+  'fantastic','excellent','ideal','stylish','trendy','fashionable','fancy',
+  'lovely','gorgeous','stunning','fabulous','superb','quality','luxurious',
+  'top rated','bestseller','new','hot','popular','must have'
+];
+
+// หมวด 3: คำเอฟเฟกต์ที่พิมพ์ไม่ได้ (เครื่อง DTG ทำไม่ได้)
+const BANNED_EFFECTS = [
+  'gold','silver','glitter','sparkle','shimmer','metallic','holographic',
+  'rhinestone','sequin','embossed','foil','neon','glow-in-the-dark','glow in the dark',
+  '3d','embroidered','bedazzled','jeweled','chrome','platinum','bronze',
+  'diamond','crystal','pearl','satin','velvet','suede','leather','denim'
+];
+
+// หมวด 4: คำโปรโมทต้องห้าม
+const BANNED_PROMO = [
+  'sale','discount','free shipping','limited','guarantee','#1','buy now',
+  'cheap','bargain','deal','offer','clearance','lowest price','save',
+  'cotton','polyester','soft','lightweight','comfortable','breathable'
+];
+
+// หมวด 5: คำหยาบ/ไม่เหมาะสม
+const BANNED_INAPPROPRIATE = [
+  'fuck','shit','damn','ass','bitch','bastard','crap','dick','pussy',
+  'hell','wtf','stfu','lmao','marijuana','cannabis','weed','cocaine',
+  'heroin','meth','drug','kill','murder','terrorist','nazi','hate',
+  'racist','sexist','porn','nude','naked','xxx','slave','genocide'
+];
+
+// รวมทั้งหมด
+const BANNED_TITLE_WORDS = [
+  ...BANNED_CLOTHING,
+  ...BANNED_FILLER,
+  ...BANNED_EFFECTS,
+  ...BANNED_PROMO,
+  ...BANNED_INAPPROPRIATE,
+  'olympic','olympics'
+];
+
+function getBannedWords() {
+  // Combine hardcoded list + trademark DB terms
+  const tm = DB.getTrademark();
+  const banned = [...BANNED_TITLE_WORDS];
+  tm.forEach(t => {
+    if(!banned.includes(t.term.toLowerCase())) banned.push(t.term.toLowerCase());
+  });
+  return banned;
+}
+
+function filterBannedFromTitle(title) {
+  if(!title) return title;
+  const banned = getBannedWords();
+  let filtered = title;
+
+  // ขั้นตอน 1: ลบตัวอักษรที่ไม่อนุญาต — ใช้ได้เฉพาะ A-Z, a-z, 0-9, เว้นวรรค
+  filtered = filtered.replace(/[^A-Za-z0-9 ]/g, '').replace(/\s{2,}/g, ' ').trim();
+
+  // ขั้นตอน 2: ลบคำต้องห้ามทั้ง 5 หมวด
+  banned.forEach(bw => {
+    const regex = new RegExp('\\b' + bw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+    filtered = filtered.replace(regex, '').replace(/\s{2,}/g, ' ').trim();
+  });
+
+  return filtered.substring(0, 60);
+}
+
+// ตรวจสอบคุณภาพ Title ตามสกิล
+function validateTitle(title) {
+  if(!title) return { valid:false, level:'red', msg:'Title ว่าง', len:0 };
+  const len = title.length;
+
+  // ตรวจตัวอักษรที่ไม่อนุญาต
+  const invalidChars = title.match(/[^A-Za-z0-9 ]/g);
+  if(invalidChars) return { valid:false, level:'red', msg:'มีตัวอักษรต้องห้าม: ' + [...new Set(invalidChars)].join(''), len };
+
+  // ตรวจคำต้องห้ามที่หลุดมา
+  const banned = getBannedWords();
+  const foundBanned = banned.filter(bw => {
+    const regex = new RegExp('\\b' + bw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    return regex.test(title);
+  });
+  if(foundBanned.length > 0) return { valid:false, level:'red', msg:'มีคำต้องห้าม: ' + foundBanned.join(', '), len };
+
+  // ตรวจความยาว
+  if(len < 50) return { valid:false, level:'red', msg:`สั้นเกินไป (${len}/60) — ต้องอย่างน้อย 50 ตัว`, len };
+  if(len >= 50 && len < 55) return { valid:true, level:'yellow', msg:`ใช้ได้ แต่ควรเพิ่มอีก (${len}/60)`, len };
+  if(len >= 55 && len <= 60) return { valid:true, level:'green', msg:`ดีมาก (${len}/60)`, len };
+  return { valid:false, level:'red', msg:`ยาวเกินไป (${len}/60)`, len };
+}
+
+// ตรวจสอบคุณภาพ Brand
+function validateBrand(brand) {
+  if(!brand) return { valid:false, level:'red', msg:'Brand ว่าง' };
+
+  // ตรวจตัวอักษร
+  const invalidChars = brand.match(/[^A-Za-z0-9 ]/g);
+  if(invalidChars) return { valid:false, level:'red', msg:'มีตัวอักษรต้องห้าม' };
+
+  // ตรวจคำต้องห้าม
+  const banned = getBannedWords();
+  const foundBanned = banned.filter(bw => {
+    const regex = new RegExp('\\b' + bw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    return regex.test(brand);
+  });
+  if(foundBanned.length > 0) return { valid:false, level:'red', msg:'มีคำต้องห้าม: ' + foundBanned.join(', ') };
+
+  if(brand.length > 50) return { valid:false, level:'red', msg:'ยาวเกิน 50 ตัว' };
+  if(brand.length < 25) return { valid:true, level:'red', msg:`สั้นมาก (${brand.length}/50) — เสีย SEO โอกาส` };
+  if(brand.length < 35) return { valid:true, level:'yellow', msg:`ควรเพิ่มอีก (${brand.length}/50) — เป้าหมาย 35-50` };
+  return { valid:true, level:'green', msg:`ดี (${brand.length}/50)` };
+}
+
+// ตรวจ Brand ว่าใช้ตัวอักษรที่อนุญาตเท่านั้น
+function filterBannedFromBrand(brand) {
+  if(!brand) return brand;
+  let filtered = brand.replace(/[^A-Za-z0-9 ]/g, '').replace(/\s{2,}/g, ' ').trim();
+  const banned = getBannedWords();
+  banned.forEach(bw => {
+    const regex = new RegExp('\\b' + bw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+    filtered = filtered.replace(regex, '').replace(/\s{2,}/g, ' ').trim();
+  });
+  return filtered.substring(0, 50);
+}
+
+// ============================================================
+// FILTER BANNED WORDS FROM CONTENT (BP1, BP2, Description)
+// ============================================================
+
+// Filter banned/TM words from Bullet Points (keeps punctuation . , ! ?)
+function filterBannedFromContent(text, maxLen) {
+  if(!text) return text;
+  const banned = getBannedWords();
+  let filtered = text;
+
+  // ลบคำต้องห้าม (แต่เก็บเครื่องหมายวรรคตอนพื้นฐานไว้)
+  banned.forEach(bw => {
+    const regex = new RegExp('\\b' + bw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+    filtered = filtered.replace(regex, '').replace(/\s{2,}/g, ' ');
+  });
+
+  // ลบตัวอักษรที่ไม่อนุญาต (เก็บ A-Z, a-z, 0-9, space, . , ! ? ')
+  filtered = filtered.replace(/[^A-Za-z0-9 .,!?']/g, '').replace(/\s{2,}/g, ' ').trim();
+
+  // แก้เครื่องหมายวรรคตอนที่เสีย
+  filtered = filtered
+    .replace(/([.,!?])\s*([.,!?])/g, '$1')        // ", ," → ","
+    .replace(/,\s*\./g, '.')                        // ", ." → "."
+    .replace(/\.\s*,/g, '.')                        // ". ," → "."
+    .replace(/\bA\b\s*[.,]?\s*\bfor\b/gi, 'For')  // "A , for" → "For"
+    .replace(/\bThis\b\s*,\s*\bfeatures\b/gi, 'This features')  // "This , features" → "This features"
+    .replace(/\band\b\s*\band\b/gi, 'and')         // "and and" → "and"
+    .replace(/\bfor\b\s*\bfor\b/gi, 'for')         // "for for" → "for"
+    .replace(/\bthis\b\s*\bthis\b/gi, 'this')
+    .replace(/\bis\b\s*\band\b\s*\./gi, '.')       // "is and ." → "."
+    .replace(/\bthat\b\s*\bis\b\s*\band\b/gi, '')  // "that is and" → ""
+    .replace(/\s*,\s*,/g, ',')                      // double commas
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  // ลบประโยคที่สั้นเกินไป (< 3 คำ) ซึ่งอาจเป็น fragment จากการลบคำ
+  const sentences = filtered.split(/(?<=[.!?])\s+/);
+  const validSentences = sentences.filter(s => {
+    const wordCount = s.split(/\s+/).filter(w => w.replace(/[.,!?']/g, '').length > 0).length;
+    return wordCount >= 3;
+  });
+  filtered = validSentences.join(' ').replace(/\s{2,}/g, ' ').trim();
+
+  return filtered.substring(0, maxLen);
+}
+
+// Validate BP content
+function validateBP(text, maxLen) {
+  if(!text) return { valid:false, level:'red', msg:'ว่าง', len:0 };
+  const len = text.length;
+
+  // ตรวจคำต้องห้าม
+  const banned = getBannedWords();
+  const foundBanned = banned.filter(bw => {
+    const regex = new RegExp('\\b' + bw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    return regex.test(text);
+  });
+  if(foundBanned.length > 0) return { valid:false, level:'red', msg:'คำต้องห้าม: ' + foundBanned.slice(0,3).join(', '), len };
+
+  if(len > maxLen) return { valid:false, level:'red', msg:`ยาวเกิน (${len}/${maxLen})`, len };
+  if(len < maxLen * 0.7) return { valid:true, level:'red', msg:`สั้นมาก (${len}/${maxLen}) — เสีย SEO`, len };
+  if(len < maxLen * 0.9) return { valid:true, level:'yellow', msg:`ควรเพิ่มอีก (${len}/${maxLen})`, len };
+  return { valid:true, level:'green', msg:`ดี (${len}/${maxLen})`, len };
+}
+
+// ============================================================
+// AUTO-PAD: เติม keyword ให้ Title/Brand ยาวถึงเป้าหมาย
+// ============================================================
+
+// คำ Audience/Occasion/Style สำหรับเติม Title ให้ถึง 55-60 ตัว
+const PAD_AUDIENCE = ['Mom','Dad','Women','Men','Kids','Girls','Boys','Grandpa','Grandma','Sister','Brother','Lover','Fan','Uncle','Aunt'];
+const PAD_OCCASION = ['Birthday','Christmas','Halloween','Retirement','Graduation','Valentines','Anniversary','Fathers Day','Mothers Day','Easter','Summer'];
+const PAD_STYLE = ['Retro','Vintage','Classic','Country','Western','Boho','Gothic','Tribal','Japanese','Floral'];
+
+function padTitleWithKeywords(title, keywords, elements, season) {
+  if(!title) return title;
+  let padded = title;
+  const titleWords = padded.toLowerCase().split(/\s+/);
+  const banned = getBannedWords();
+
+  // ขั้น 1: ดึงคำจาก detected elements (animals, objects)
+  const elementWords = [];
+  if(elements) {
+    if(elements.animals) elements.animals.forEach(a => elementWords.push(...a.split(/\s+/)));
+    if(elements.objects) elements.objects.forEach(o => elementWords.push(...o.split(/\s+/)));
+  }
+
+  // ขั้น 2: ดึงคำจาก keywords ที่ AI สร้าง (แยกเป็นคำเดี่ยว)
+  const kwWords = [];
+  (keywords || []).forEach(kw => {
+    kw.replace(/\s*T-Shirt\s*/gi, '').split(/\s+/).forEach(w => {
+      const wLow = w.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if(wLow.length > 2 && !banned.includes(wLow) && !titleWords.includes(wLow)) {
+        kwWords.push(w.replace(/[^A-Za-z0-9]/g, ''));
+      }
+    });
+  });
+
+  // ขั้น 3: เติม season keyword ถ้ามี
+  if(season && padded.length < 55) {
+    const seasonClean = season.replace(/[^A-Za-z0-9 ]/g, '');
+    if(!titleWords.includes(seasonClean.toLowerCase()) && !banned.includes(seasonClean.toLowerCase())) {
+      padded = (padded + ' ' + seasonClean).substring(0, 60);
+      titleWords.push(seasonClean.toLowerCase());
+    }
+  }
+
+  // ขั้น 4: เติมคำจาก elements + keywords
+  const allPadWords = [...new Set([...elementWords, ...kwWords])];
+  for(const w of allPadWords) {
+    if(padded.length >= 55) break;
+    const wClean = w.replace(/[^A-Za-z0-9]/g, '');
+    const wLow = wClean.toLowerCase();
+    if(wClean.length > 2 && !titleWords.includes(wLow) && !banned.includes(wLow)) {
+      const candidate = padded + ' ' + wClean;
+      if(candidate.length <= 60) {
+        padded = candidate;
+        titleWords.push(wLow);
+      }
+    }
+  }
+
+  // ขั้น 5: เติม Audience words
+  for(const w of PAD_AUDIENCE) {
+    if(padded.length >= 55) break;
+    if(!titleWords.includes(w.toLowerCase())) {
+      const candidate = padded + ' ' + w;
+      if(candidate.length <= 60) {
+        padded = candidate;
+        titleWords.push(w.toLowerCase());
+      }
+    }
+  }
+
+  // ขั้น 6: เติม Occasion words
+  for(const w of PAD_OCCASION) {
+    if(padded.length >= 55) break;
+    if(!titleWords.includes(w.toLowerCase())) {
+      const candidate = padded + ' ' + w;
+      if(candidate.length <= 60) {
+        padded = candidate;
+        titleWords.push(w.toLowerCase());
+      }
+    }
+  }
+
+  // ขั้น 7: เติม Style words
+  for(const w of PAD_STYLE) {
+    if(padded.length >= 55) break;
+    if(!titleWords.includes(w.toLowerCase())) {
+      const candidate = padded + ' ' + w;
+      if(candidate.length <= 60) {
+        padded = candidate;
+        titleWords.push(w.toLowerCase());
+      }
+    }
+  }
+
+  return padded.replace(/\s{2,}/g, ' ').trim().substring(0, 60);
+}
+
+function padBrandWithKeywords(brand, keywords, elements) {
+  if(!brand) return brand;
+  let padded = brand;
+  const brandWords = padded.toLowerCase().split(/\s+/);
+  const banned = getBannedWords();
+
+  // คำสำหรับเติม Brand ให้ยาวถึง 35-50 ตัว
+  const brandPadWords = ['Prints','Studio','Collections','Creations','Apparel','Originals','Works','Graphics','Culture','Heritage','Pride','Spirit','Vibes','Nation','Society','Republic','Workshop','Factory','House','Lab'];
+
+  // ดึงคำจาก elements
+  if(elements) {
+    if(elements.animals) elements.animals.forEach(a => {
+      const aClean = a.replace(/[^A-Za-z0-9]/g, '');
+      if(aClean.length > 2 && !brandWords.includes(aClean.toLowerCase()) && !banned.includes(aClean.toLowerCase())) {
+        if((padded + ' ' + aClean).length <= 50) { padded += ' ' + aClean; brandWords.push(aClean.toLowerCase()); }
+      }
+    });
+    if(elements.objects) elements.objects.forEach(o => {
+      const oClean = o.replace(/[^A-Za-z0-9]/g, '');
+      if(oClean.length > 2 && !brandWords.includes(oClean.toLowerCase()) && !banned.includes(oClean.toLowerCase())) {
+        if((padded + ' ' + oClean).length <= 50) { padded += ' ' + oClean; brandWords.push(oClean.toLowerCase()); }
+      }
+    });
+  }
+
+  // ดึงคำจาก keywords
+  const kwWords = [];
+  (keywords || []).forEach(kw => {
+    kw.replace(/\s*T-Shirt\s*/gi, '').split(/\s+/).forEach(w => {
+      const wClean = w.replace(/[^A-Za-z0-9]/g, '');
+      const wLow = wClean.toLowerCase();
+      if(wClean.length > 2 && !banned.includes(wLow) && !brandWords.includes(wLow)) kwWords.push(wClean);
+    });
+  });
+
+  for(const w of kwWords) {
+    if(padded.length >= 35) break;
+    if((padded + ' ' + w).length <= 50) { padded += ' ' + w; brandWords.push(w.toLowerCase()); }
+  }
+
+  // เติม brand pad words
+  for(const w of brandPadWords) {
+    if(padded.length >= 35) break;
+    if(!brandWords.includes(w.toLowerCase())) {
+      if((padded + ' ' + w).length <= 50) { padded += ' ' + w; brandWords.push(w.toLowerCase()); }
+    }
+  }
+
+  return padded.replace(/\s{2,}/g, ' ').trim().substring(0, 50);
+}
+
+// ============================================================
+// KEYWORD FILTERING (Trademark + Rejected + Banned + Duplicate)
+// ============================================================
+function filterKeywords(keywords) {
+  const tm = DB.getTrademark();
+  const rej = DB.getRejected();
+  const hist = DB.getHistory();
+  const banned = getBannedWords();
+  const filtered = [];
+  const removed = [];
+
+  keywords.forEach(kw => {
+    const kwLower = kw.toLowerCase();
+
+    // Check banned words
+    const bannedMatch = banned.find(bw => kwLower.includes(bw));
+    if(bannedMatch) { removed.push({kw, reason:'Banned: '+bannedMatch}); return; }
+
+    // Check trademark
+    const tmMatch = tm.find(t => kwLower.includes(t.term.toLowerCase()));
+    if(tmMatch) { removed.push({kw, reason:'TM: '+tmMatch.term}); return; }
+
+    // Check rejected
+    const rejMatch = rej.find(r => kwLower.includes(r.keyword.toLowerCase()) || r.keyword.toLowerCase().includes(kwLower.replace(' t-shirt','')));
+    if(rejMatch) { removed.push({kw, reason:'Rejected: '+rejMatch.keyword}); return; }
+
+    filtered.push(kw);
+  });
+
+  return { filtered, removed };
+}
+
+// ============================================================
+// TM CHECK & FIX — ตรวจสอบ Trademark/ลิขสิทธิ์ทุกฟิลด์
+// ============================================================
+
+// ตรวจหาคำ TM ในข้อความ
+function findTMInText(text) {
+  if(!text) return [];
+  const tm = DB.getTrademark();
+  const found = [];
+  tm.forEach(t => {
+    const regex = new RegExp('\\b' + t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+    if(regex.test(text)) {
+      found.push(t.term);
+    }
+  });
+  return [...new Set(found)];
+}
+
+// ตรวจ TM ในแถวเดียว — คืน object พร้อมรายละเอียด
+function checkTMRow(r) {
+  const fields = {
+    title: findTMInText(r.title),
+    brand: findTMInText(r.brand),
+    bp1: findTMInText(r.bulletPoint1),
+    bp2: findTMInText(r.bulletPoint2),
+    desc: findTMInText(r.description)
+  };
+  const allFound = [...new Set([...fields.title, ...fields.brand, ...fields.bp1, ...fields.bp2, ...fields.desc])];
+  return { fields, allFound, hasTM: allFound.length > 0 };
+}
+
+// ตรวจ TM ทุกแถว — แสดงผลในตาราง
+async function checkTMAll() {
+  if(results.length === 0) { showStatus('❌ ไม่มีข้อมูลให้ตรวจสอบ','error'); return; }
+
+  showStatus('™ กำลังตรวจสอบ Trademark/ลิขสิทธิ์...','info');
+
+  let totalTM = 0;
+  let rowsWithTM = 0;
+
+  results.forEach((r,i) => {
+    const check = checkTMRow(r);
+    r._tmCheck = check;
+    if(check.hasTM) {
+      rowsWithTM++;
+      totalTM += check.allFound.length;
+    }
+  });
+
+  renderResults();
+
+  if(rowsWithTM === 0) {
+    showStatus('✅ ไม่พบ Trademark/ลิขสิทธิ์ในทุกแถว — ปลอดภัย!','success');
+  } else {
+    const el = document.getElementById('statusMsg');
+    el.innerHTML = `<div class="status-box status-warning" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>⚠️ พบ TM/ลิขสิทธิ์ <strong>${totalTM}</strong> คำ ใน <strong>${rowsWithTM}</strong> แถว</span>
+      <button class="btn-fix-tm" style="padding:6px 16px;font-size:13px" onclick="fixTMAllRows()">🔧 แก้ TM ทั้งหมด (${rowsWithTM} แถว)</button>
+    </div>`;
+  }
+}
+
+// ลบคำ TM ออกจากข้อความ
+function removeTMFromText(text, tmWords) {
+  if(!text || !tmWords.length) return text;
+  let cleaned = text;
+  tmWords.forEach(tm => {
+    const regex = new RegExp('\\b' + tm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+    cleaned = cleaned.replace(regex, '').replace(/\s{2,}/g, ' ');
+  });
+  // ลบเครื่องหมายวรรคตอนที่เสีย
+  cleaned = cleaned
+    .replace(/([.,!?])\s*([.,!?])/g, '$1')
+    .replace(/,\s*\./g, '.').replace(/\.\s*,/g, '.')
+    .replace(/\s*,\s*,/g, ',')
+    .replace(/\s{2,}/g, ' ').trim();
+  return cleaned;
+}
+
+// AI สร้าง content ใหม่แทนที่ TM words
+async function rewriteWithoutTM(text, fieldName, maxLen, tmWords, title) {
+  const apiKey = DB.getSettings()?.apiKey;
+  if(!apiKey) return removeTMFromText(text, tmWords);
+
+  const prompt = `You are an Amazon Merch on Demand content writer.
+
+CURRENT ${fieldName}: "${text}"
+TRADEMARK VIOLATIONS FOUND: ${tmWords.join(', ')}
+
+YOUR TASK: Rewrite this ${fieldName} WITHOUT any trademarked terms.
+Replace each trademarked term with generic alternatives that are safe for Amazon Merch on Demand.
+
+REPLACEMENT RULES:
+- Replace brand names with generic descriptions (e.g., "Disney Princess" → "fairy tale princess", "Marvel hero" → "comic book superhero")
+- Replace character names with generic descriptions (e.g., "Pikachu" → "electric creature", "Batman" → "dark knight vigilante")
+- Replace celebrity names with generic descriptions (e.g., "Taylor Swift" → "country pop star")
+- Replace team/league names with generic descriptions (e.g., "NFL" → "football league", "Lakers" → "basketball team")
+- Keep the same overall meaning, tone, and length
+- Target length: ${maxLen > 100 ? Math.floor(maxLen*0.9)+'-'+maxLen : '50-'+maxLen} characters
+${maxLen <= 60 ? '- Title must be 55-60 characters, use ONLY A-Z, a-z, 0-9, and spaces. NO special characters.' : ''}
+${maxLen <= 50 ? '- Brand must be 35-50 characters, use ONLY A-Z, a-z, 0-9, and spaces. NO special characters.' : ''}
+
+BANNED WORDS (never use): gift, design, art, cool, awesome, perfect, amazing, best, great, nice, beautiful, cute, idea, premium, unique, special, wonderful, fantastic, shirt, tee, hoodie, cotton, polyester, fabric, quality, print, gold, silver, glitter, neon, sale, discount
+
+ALSO NEVER USE THESE TRADEMARKS: ${tmWords.join(', ')}
+
+RETURN ONLY the rewritten text, nothing else. No quotes, no explanation.`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: maxLen > 500 ? 2000 : 400,
+        temperature: 0.7
+      })
+    });
+    const data = await res.json();
+    const rewritten = (data.choices?.[0]?.message?.content || '').trim();
+    if(rewritten.length > 10) {
+      // ตรวจสอบอีกรอบว่าไม่มี TM เหลือ
+      const remaining = findTMInText(rewritten);
+      if(remaining.length > 0) {
+        // ถ้ายังมี TM เหลือ ลบออกด้วย regex
+        return removeTMFromText(rewritten, remaining).substring(0, maxLen);
+      }
+      return rewritten.substring(0, maxLen);
+    }
+  } catch(e) {
+    console.warn('rewriteWithoutTM error:', e);
+  }
+  // fallback: ลบ TM ออกแบบ manual
+  return removeTMFromText(text, tmWords).substring(0, maxLen);
+}
+
+// แก้ TM ทั้งแถว (กดปุ่ม "แก้ TM" ต่อแถว)
+async function fixTMRow(rowIndex) {
+  const r = results[rowIndex];
+  if(!r || !r._tmCheck || !r._tmCheck.hasTM) return;
+
+  const check = r._tmCheck;
+  r._tmFixing = true;
+  renderResults();
+
+  showStatus(`™ กำลังแก้ไข TM แถวที่ ${rowIndex+1}...`, 'info');
+
+  // แก้ Title
+  if(check.fields.title.length > 0) {
+    r.title = await rewriteWithoutTM(r.title, 'Title', 60, check.fields.title, r.title);
+    r.title = filterBannedFromTitle(r.title);
+    renderResults();
+  }
+
+  // แก้ Brand
+  if(check.fields.brand.length > 0) {
+    r.brand = await rewriteWithoutTM(r.brand, 'Brand', 50, check.fields.brand, r.title);
+    r.brand = r.brand.replace(/[^A-Za-z0-9 ]/g, '').replace(/\s{2,}/g, ' ').trim().substring(0,50);
+    renderResults();
+  }
+
+  // แก้ BP1
+  if(check.fields.bp1.length > 0) {
+    r.bulletPoint1 = await rewriteWithoutTM(r.bulletPoint1, 'Bullet Point 1', 250, check.fields.bp1, r.title);
+    r.bulletPoint1 = filterBannedFromContent(r.bulletPoint1, 250);
+    renderResults();
+  }
+
+  // แก้ BP2
+  if(check.fields.bp2.length > 0) {
+    r.bulletPoint2 = await rewriteWithoutTM(r.bulletPoint2, 'Bullet Point 2', 250, check.fields.bp2, r.title);
+    r.bulletPoint2 = filterBannedFromContent(r.bulletPoint2, 250);
+    renderResults();
+  }
+
+  // แก้ Description
+  if(check.fields.desc.length > 0) {
+    r.description = await rewriteWithoutTM(r.description, 'Description', 2000, check.fields.desc, r.title);
+    r.description = filterBannedFromContent(r.description, 2000);
+    renderResults();
+  }
+
+  // ตรวจอีกรอบ
+  r._tmCheck = checkTMRow(r);
+  r._tmFixing = false;
+  renderResults();
+
+  if(r._tmCheck.hasTM) {
+    showStatus(`⚠️ แถวที่ ${rowIndex+1}: ยังพบ TM เหลือ ${r._tmCheck.allFound.join(', ')} — ลองกดแก้อีกครั้ง`, 'warning');
+  } else {
+    showStatus(`✅ แถวที่ ${rowIndex+1}: แก้ไข TM สำเร็จ — ปลอดภัยแล้ว!`, 'success');
+  }
+}
+
+// แก้ TM ทุกแถวที่มีปัญหา
+async function fixTMAllRows() {
+  const rowsToFix = results.map((r,i) => ({r,i})).filter(({r}) => r._tmCheck && r._tmCheck.hasTM);
+  if(rowsToFix.length === 0) { showStatus('✅ ไม่มีแถวที่ต้องแก้ไข','success'); return; }
+
+  showStatus(`™ กำลังแก้ไข TM ${rowsToFix.length} แถว...`, 'info');
+
+  for(const {r,i} of rowsToFix) {
+    await fixTMRow(i);
+  }
+
+  showStatus(`✅ แก้ไข TM ทั้งหมดเสร็จสิ้น ${rowsToFix.length} แถว`, 'success');
+}
+
+// ============================================================
+// SEASONAL KEYWORD INJECTION
+// ============================================================
+function injectSeasonalKeywords(keywords, detectedSeason) {
+  if(!detectedSeason) return keywords;
+  const seasonal = DB.getSeasonal();
+  const match = seasonal.find(s => s.season.toLowerCase().includes(detectedSeason.toLowerCase()));
+  if(!match) return keywords;
+
+  const added = [];
+  match.keywords.forEach(sk => {
+    if(!keywords.find(k => k.toLowerCase() === sk.toLowerCase())) {
+      added.push(sk);
+    }
+  });
+  return [...keywords, ...added.slice(0,4)]; // Add up to 4 seasonal keywords
+}
+
+// ============================================================
+// AMAZON 3-TIER VALIDATION
+// ============================================================
+async function validateKeywordAmazon(keyword) {
+  // Tier 1: Exact match
+  const tier1 = await amazonSuggest(keyword);
+
+  // ถ้า CORS Error ให้ลอง JSONP fallback
+  if(tier1.error === 'CORS') {
+    const jsonpResult = await amazonSuggestJsonp(keyword);
+    if(jsonpResult.error === 'CORS') {
+      // ทั้ง fetch และ JSONP ไม่ทำงาน → ยอมรับ keyword แบบ unverified
+      return { valid:true, tier:'unverified', keyword:keyword, score:60, suggestions:[], note:'Amazon API ไม่สามารถเข้าถึงได้ (CORS) — keyword ถูกยอมรับแบบ unverified' };
+    }
+    // JSONP ทำงานได้ ใช้ผลลัพธ์จาก JSONP
+    if(jsonpResult.found) return { valid:true, tier:1, keyword:keyword, score:100, suggestions:jsonpResult.suggestions };
+  }
+
+  if(tier1.found) return { valid:true, tier:1, keyword:keyword, score:100, suggestions:tier1.suggestions };
+
+  // Tier 2: Synonym search
+  const baseKW = keyword.replace(/\s*T-Shirt$/i, '').trim();
+  const synonyms = generateSynonyms(baseKW);
+
+  for(const syn of synonyms) {
+    const synKW = syn + ' T-Shirt';
+    const tier2 = await amazonSuggest(synKW);
+    if(tier2.found) return { valid:true, tier:2, keyword:synKW, originalKeyword:keyword, score:75, suggestions:tier2.suggestions };
+    if(tier2.error !== 'CORS') await sleep(150);
+  }
+
+  // Tier 3: Amazon suggestion mining
+  const tier3 = await amazonSuggest(baseKW);
+  if(tier3.suggestions && tier3.suggestions.length > 0) {
+    const tshirtSugs = tier3.suggestions.filter(s => /t-?shirt/i.test(s));
+    if(tshirtSugs.length > 0) {
+      const best = tshirtSugs[0];
+      return { valid:true, tier:3, keyword:best, originalKeyword:keyword, score:50, suggestions:tshirtSugs };
+    }
+  }
+
+  // Tier 4: ถ้า Amazon มี suggestions อื่นๆ (ไม่ใช่ t-shirt) แสดงว่าคนค้นหาคำนี้
+  if(tier3.suggestions && tier3.suggestions.length > 0) {
+    return { valid:true, tier:4, keyword:keyword, score:40, suggestions:tier3.suggestions, note:'มี suggestions แต่ไม่เจาะจง t-shirt' };
+  }
+
+  return { valid:false, tier:0, keyword:keyword, score:0, suggestions:[] };
+}
+
+async function amazonSuggest(keyword) {
+  try {
+    const url = `https://completion.amazon.com/api/2017/suggestions?mid=ATVPDKIKX0DER&alias=aps&prefix=${encodeURIComponent(keyword)}`;
+    const res = await fetch(url);
+    if(!res.ok) return { found:false, suggestions:[], competition:'unknown' };
+    const data = await res.json();
+    return parseAmazonSuggestions(data);
+  } catch(e) {
+    return { found:null, suggestions:[], tshirtCount:0, competition:'error', error:'CORS' };
+  }
+}
+
+// JSONP fallback สำหรับกรณี CORS บล็อก fetch
+async function amazonSuggestJsonp(keyword) {
+  return new Promise((resolve) => {
+    const callbackName = 'amzCallback_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+    const timeout = setTimeout(() => {
+      delete window[callbackName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+      resolve({ found:null, suggestions:[], tshirtCount:0, competition:'error', error:'CORS' });
+    }, 5000);
+
+    window[callbackName] = function(data) {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+      resolve(parseAmazonSuggestions(data));
+    };
+
+    const script = document.createElement('script');
+    script.src = `https://completion.amazon.com/api/2017/suggestions?mid=ATVPDKIKX0DER&alias=aps&prefix=${encodeURIComponent(keyword)}&callback=${callbackName}`;
+    script.onerror = function() {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+      resolve({ found:null, suggestions:[], tshirtCount:0, competition:'error', error:'CORS' });
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// แยก function parse ออกมาใช้ร่วมกันทั้ง fetch และ JSONP
+function parseAmazonSuggestions(data) {
+  const suggestions = (data.suggestions || []).map(s => s.value);
+  const tshirtSuggestions = suggestions.filter(s => /t-?shirt/i.test(s));
+  const found = tshirtSuggestions.length > 0;
+
+  // เกณฑ์จำนวนผลลัพธ์ตามสกิล:
+  let competition = 'none';
+  if(suggestions.length > 0) {
+    if(tshirtSuggestions.length >= 5) {
+      competition = 'high';
+    } else if(tshirtSuggestions.length >= 1) {
+      competition = 'low';
+    } else if(suggestions.length > 0) {
+      competition = 'related';
+    }
+  }
+
+  return { found, suggestions:suggestions.slice(0,8), tshirtCount:tshirtSuggestions.length, competition };
+}
+
+function generateSynonyms(phrase) {
+  // Simple synonym generation based on common patterns
+  const words = phrase.split(' ');
+  const synonymMap = {
+    'funny':'hilarious,humorous,comic,laughing',
+    'cute':'adorable,kawaii,sweet,lovely',
+    'cool':'awesome,epic,rad,dope',
+    'love':'heart,romance,loving,beloved',
+    'happy':'joyful,cheerful,blessed,glad',
+    'best':'greatest,top,number one,worlds best',
+    'mom':'mama,mother,mommy,mum',
+    'dad':'papa,father,daddy,pop',
+    'cat':'kitten,kitty,feline,cat lover',
+    'dog':'puppy,doggy,canine,dog lover',
+    'retro':'vintage,classic,old school,throwback',
+    'scary':'spooky,creepy,horror,frightening',
+    'beautiful':'gorgeous,stunning,pretty,elegant',
+    'crazy':'wild,insane,mad,bonkers',
+    'angry':'furious,mad,grumpy,fierce',
+    'sad':'melancholy,blue,gloomy,emotional',
+    'smart':'clever,genius,intelligent,brainy',
+    'strong':'powerful,mighty,tough,fierce',
+    'big':'large,huge,giant,massive',
+    'small':'tiny,little,mini,petite'
+  };
+
+  const results = [];
+  words.forEach(w => {
+    const syns = synonymMap[w.toLowerCase()];
+    if(syns) {
+      syns.split(',').forEach(s => {
+        const newPhrase = phrase.replace(new RegExp(w,'i'), s.trim());
+        results.push(newPhrase);
+      });
+    }
+  });
+
+  // Also try just the key phrase without adjectives
+  if(words.length > 1) {
+    results.push(words[words.length-1] + ' lover');
+    results.push(words.join(' ') + ' lover');
+  }
+
+  return results.slice(0,5); // Max 5 synonyms
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function getAmazonSearchURL(kw) {
+  return 'https://www.amazon.com/s?k='+encodeURIComponent(kw)+'&i=fashion';
+}
+
+// ============================================================
+// GENERATION CONTROL (Stop / Pause / Resume)
+// ============================================================
+let genStopped = false;
+let genPaused = false;
+let genPauseResolve = null;
+
+function stopGeneration() {
+  genStopped = true;
+  genPaused = false;
+  if(genPauseResolve) { genPauseResolve(); genPauseResolve = null; }
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnStop').style.opacity = '0.4';
+  document.getElementById('btnPause').disabled = true;
+  document.getElementById('btnPause').style.opacity = '0.4';
+  document.getElementById('btnPause').style.display = '';
+  document.getElementById('btnResume').style.display = 'none';
+  showStatus('⏹ หยุดการสร้าง Keyword แล้ว','error');
+}
+
+function pauseGeneration() {
+  genPaused = true;
+  document.getElementById('btnPause').style.display = 'none';
+  document.getElementById('btnResume').style.display = '';
+  document.getElementById('btnResume').disabled = false;
+  document.getElementById('btnResume').style.opacity = '1';
+  document.getElementById('progressText').textContent += ' ⏸ PAUSED';
+  showStatus('⏸ หยุดชั่วคราว — กด ดำเนินการต่อ เพื่อทำต่อ','warning');
+}
+
+function resumeGeneration() {
+  genPaused = false;
+  document.getElementById('btnResume').style.display = 'none';
+  document.getElementById('btnPause').style.display = '';
+  document.getElementById('btnPause').disabled = false;
+  document.getElementById('btnPause').style.opacity = '1';
+  if(genPauseResolve) { genPauseResolve(); genPauseResolve = null; }
+  showStatus('▶ ทำงานต่อแล้ว','success');
+}
+
+function waitIfPaused() {
+  if(!genPaused) return Promise.resolve();
+  return new Promise(resolve => { genPauseResolve = resolve; });
+}
+
+function showGenControls(show) {
+  const btnStop = document.getElementById('btnStop');
+  const btnPause = document.getElementById('btnPause');
+  const btnResume = document.getElementById('btnResume');
+  btnStop.disabled = !show;
+  btnStop.style.opacity = show ? '1' : '0.4';
+  btnPause.disabled = !show;
+  btnPause.style.opacity = show ? '1' : '0.4';
+  btnPause.style.display = '';
+  btnResume.style.display = 'none';
+}
+
+// ============================================================
+// MAIN GENERATE FUNCTION
+// ============================================================
+async function generateKeywords() {
+  const selected = uploadedImages.filter(i => i.selected);
+  if(!selected.length) return;
+
+  const brand = document.getElementById('brandName').value || 'My Brand';
+
+  // Reset control flags
+  genStopped = false;
+  genPaused = false;
+  genPauseResolve = null;
+
+  document.getElementById('btnGenerate').disabled = true;
+  document.getElementById('progressArea').classList.remove('hidden');
+  document.getElementById('btnExport').disabled = true;
+  document.getElementById('btnClear').disabled = true;
+  document.getElementById('btnCheckTM').disabled = true;
+  document.getElementById('statsBar').classList.remove('hidden');
+  showGenControls(true);
+
+  results = [];
+  let totalValidKW = 0, totalFilteredKW = 0;
+
+  for(let idx = 0; idx < selected.length; idx++) {
+    // Check stop
+    if(genStopped) break;
+    // Check pause
+    await waitIfPaused();
+    if(genStopped) break;
+
+    const img = selected[idx];
+    const pct = Math.round((idx / selected.length) * 100);
+    document.getElementById('progressFill').style.width = pct+'%';
+    document.getElementById('progressText').textContent = `(${idx+1}/${selected.length}) กำลังวิเคราะห์: ${img.name}`;
+
+    let result = {
+      imageUrl: img.url,
+      imagePath: img.name,
+      title: '',
+      brand: brand.substring(0,50),
+      type: '',
+      keywords: [],
+      validKeywords: [],
+      amazonResults: [],
+      removedKeywords: [],
+      bulletPoint1: '',
+      bulletPoint2: '',
+      description: '',
+      detectedSeason: null,
+      contentSafety: null,
+      status: 'analyzing'
+    };
+    results.push(result);
+    renderResults();
+
+    try {
+      // Step 1: AI Analysis
+      if(genStopped) break;
+      await waitIfPaused();
+      if(genStopped) break;
+      document.getElementById('progressText').textContent = `(${idx+1}/${selected.length}) 🤖 AI กำลังวิเคราะห์รูป...`;
+      const ai = await analyzeImage(img.file);
+
+      result.keywords = ai.keywords || [];
+      result.title = (ai.suggestedTitle || '').substring(0,60);
+      result.detectedSeason = ai.detectedSeason;
+      result.detectedElements = ai.detectedElements || {};
+      result.contentSafety = ai.contentSafety;
+      result.type = ai.contentSafety?.type || 'man, woman, youth, girls';
+      // Respect Content Options toggles — only store content if toggle is ON
+      const bp1Active = document.getElementById('toggleBP1').checked;
+      const bp2Active = document.getElementById('toggleBP2').checked;
+      const descActive = document.getElementById('toggleDesc').checked;
+      result.bulletPoint1 = bp1Active ? filterBannedFromContent(ai.bulletPoint1 || '', 250) : '';
+      result.bulletPoint2 = bp2Active ? filterBannedFromContent(ai.bulletPoint2 || '', 250) : '';
+      result.description = descActive ? filterBannedFromContent(ai.description || '', 2000) : '';
+
+      // Brand logic - AI brand takes precedence if toggle is on
+      if(document.getElementById('toggleAIBrand').checked && ai.suggestedBrand) {
+        result.brand = ai.suggestedBrand.substring(0,50);
+      }
+
+      // Filter banned words + invalid chars from title & brand
+      result.title = filterBannedFromTitle(result.title);
+      result.brand = filterBannedFromBrand(result.brand);
+
+      // === AUTO-PAD TITLE ถ้าสั้นกว่า 55 ตัว ===
+      // หลังลบคำต้องห้ามแล้ว Title อาจสั้นลง ต้องเติม keyword ให้ยาวถึง 55-60
+      if(result.title.length < 55) {
+        result.title = padTitleWithKeywords(result.title, result.keywords, result.detectedElements, result.detectedSeason);
+      }
+
+      // === AUTO-PAD BRAND ถ้าสั้นกว่า 35 ตัว ===
+      if(result.brand.length < 35) {
+        result.brand = padBrandWithKeywords(result.brand, result.keywords, result.detectedElements);
+      }
+
+      // Uniqueness check — Title ต้องไม่ซ้ำกับแถวก่อนหน้า
+      const existingTitles = results.filter((r2,j) => j !== results.length-1 && r2.title).map(r2 => r2.title.toLowerCase().trim());
+      if(existingTitles.includes(result.title.toLowerCase().trim())) {
+        // ถ้า Title ซ้ำ ให้เติมเลข index ต่อท้ายเพื่อแยก
+        result.title = (result.title + ' ' + (idx+1)).substring(0,60);
+        result.titleDuplicate = true;
+      }
+
+      // Uniqueness check — Brand ต้องไม่ซ้ำ
+      const existingBrands = results.filter((r2,j) => j !== results.length-1 && r2.brand).map(r2 => r2.brand.toLowerCase().trim());
+      if(existingBrands.includes(result.brand.toLowerCase().trim())) {
+        result.brandDuplicate = true;
+      }
+
+      // Title กับ Brand ห้ามเหมือนกัน
+      if(result.title.toLowerCase().trim() === result.brand.toLowerCase().trim()) {
+        result.titleBrandSame = true;
+      }
+
+      result.status = 'filtering';
+      renderResults();
+
+      // Step 2: Filter keywords
+      if(genStopped) break;
+      await waitIfPaused();
+      if(genStopped) break;
+      document.getElementById('progressText').textContent = `(${idx+1}/${selected.length}) 🔍 กรอง Trademark/Rejected...`;
+      const { filtered, removed } = filterKeywords(result.keywords);
+      result.removedKeywords = removed;
+      totalFilteredKW += removed.length;
+
+      // Step 3: Inject seasonal keywords
+      const withSeasonal = injectSeasonalKeywords(filtered, result.detectedSeason);
+
+      // Step 4: Amazon validation
+      result.status = 'validating';
+      renderResults();
+      result.amazonResults = [];
+      result.validKeywords = [];
+
+      for(let ki = 0; ki < withSeasonal.length; ki++) {
+        if(genStopped) break;
+        await waitIfPaused();
+        if(genStopped) break;
+
+        const kw = withSeasonal[ki];
+        document.getElementById('progressText').textContent = `(${idx+1}/${selected.length}) 🔎 Amazon check: ${kw} (${ki+1}/${withSeasonal.length})`;
+
+        const amzResult = await validateKeywordAmazon(kw);
+        result.amazonResults.push(amzResult);
+
+        if(amzResult.valid) {
+          result.validKeywords.push(amzResult.keyword);
+        }
+
+        renderResults();
+        await sleep(200);
+      }
+
+      if(genStopped) { result.status = 'stopped'; renderResults(); break; }
+
+      totalValidKW += result.validKeywords.length;
+
+      // Update title if we have valid keywords
+      if(result.validKeywords.length > 0) {
+        const best = result.amazonResults.filter(r=>r.valid).sort((a,b)=>b.score-a.score);
+        if(best.length > 0 && !result.title) {
+          result.title = filterBannedFromTitle(best[0].keyword.substring(0,60));
+        }
+      }
+
+      // === AUTO-EXPAND CONTENT ถ้าสั้นเกินไป (หลัง Amazon validation เสร็จ) ===
+      if(!genStopped) {
+        const bp1Active = document.getElementById('toggleBP1').checked;
+        const bp2Active = document.getElementById('toggleBP2').checked;
+        const descActive = document.getElementById('toggleDesc').checked;
+
+        if(bp1Active && result.bulletPoint1.length > 0 && result.bulletPoint1.length < 200) {
+          document.getElementById('progressText').textContent = `(${idx+1}/${selected.length}) 📝 ขยาย Bullet Point 1...`;
+          result.bulletPoint1 = filterBannedFromContent(
+            await expandContentAI(result.bulletPoint1, 'Bullet Point 1', 230, 250, result.title, result.keywords, result.validKeywords),
+            250
+          );
+          renderResults();
+        }
+        if(bp2Active && result.bulletPoint2.length > 0 && result.bulletPoint2.length < 200) {
+          document.getElementById('progressText').textContent = `(${idx+1}/${selected.length}) 📝 ขยาย Bullet Point 2...`;
+          result.bulletPoint2 = filterBannedFromContent(
+            await expandContentAI(result.bulletPoint2, 'Bullet Point 2', 230, 250, result.title, result.keywords, result.validKeywords),
+            250
+          );
+          renderResults();
+        }
+        if(descActive && result.description.length > 0 && result.description.length < 1400) {
+          document.getElementById('progressText').textContent = `(${idx+1}/${selected.length}) 📝 ขยาย Description...`;
+          result.description = filterBannedFromContent(
+            await expandContentAI(result.description, 'Description', 1500, 2000, result.title, result.keywords, result.validKeywords),
+            2000
+          );
+          renderResults();
+        }
+      }
+
+      result.status = 'done';
+
+      // Save to history
+      const hist = DB.getHistory();
+      hist.unshift({
+        id: 'h_'+Date.now(),
+        title: result.title,
+        imagePath: result.imagePath,
+        dateCreated: new Date().toISOString().slice(0,10),
+        keywords: result.validKeywords,
+        type: result.type,
+        season: result.detectedSeason
+      });
+      DB.setHistory(hist.slice(0,500)); // Keep max 500
+
+    } catch(err) {
+      result.status = 'error';
+      result.error = err.message;
+    }
+
+    renderResults();
+
+    // Update stats
+    document.getElementById('statTotal').textContent = results.length;
+    document.getElementById('statDone').textContent = results.filter(r=>r.status==='done').length;
+    document.getElementById('statKW').textContent = totalValidKW;
+    document.getElementById('statFiltered').textContent = totalFilteredKW;
+  }
+
+  document.getElementById('progressFill').style.width = '100%';
+  if(genStopped) {
+    document.getElementById('progressText').textContent = `⏹ หยุดแล้ว — ประมวลผลได้ ${results.filter(r=>r.status==='done').length}/${selected.length} รูป`;
+  } else {
+    document.getElementById('progressText').textContent = `✅ เสร็จสิ้น! ประมวลผล ${selected.length} รูป`;
+  }
+  document.getElementById('btnGenerate').disabled = false;
+  document.getElementById('btnExport').disabled = false;
+  document.getElementById('btnClear').disabled = false;
+  document.getElementById('btnCheckTM').disabled = false;
+  showGenControls(false);
+
+  const doneCount = results.filter(r=>r.status==='done').length;
+  showStatus(genStopped
+    ? '⏹ หยุดสร้าง Keywords — สำเร็จ '+doneCount+' รูป (Valid: '+totalValidKW+', Filtered: '+totalFilteredKW+')'
+    : '✅ สร้าง Keywords สำเร็จ '+results.length+' รูป (Valid: '+totalValidKW+', Filtered: '+totalFilteredKW+')',
+    genStopped ? 'warning' : 'success');
+  renderHistoryDB();
+  updateSettingsStats();
+}
+
+// ============================================================
+// RENDER RESULTS TABLE
+// ============================================================
+function renderResults() {
+  const tbody = document.getElementById('resultsBody');
+  if(!results.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted)">เลือกรูปและกด "สร้าง Keywords" เพื่อเริ่มต้น</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = results.map((r,i) => {
+    // Status badge
+    let statusBadge = '';
+    if(r.status === 'analyzing') statusBadge = '<span class="badge badge-orange"><span class="spinner"></span> AI</span>';
+    else if(r.status === 'filtering') statusBadge = '<span class="badge badge-blue"><span class="spinner"></span> กรอง</span>';
+    else if(r.status === 'validating') statusBadge = '<span class="badge badge-yellow"><span class="spinner"></span> Amazon</span>';
+    else if(r.status === 'done') statusBadge = '<span class="badge badge-green">✓</span>';
+    else if(r.status === 'stopped') statusBadge = '<span class="badge badge-yellow">⏹</span>';
+    else statusBadge = '<span class="badge badge-red">✗</span>';
+
+    // BP1 column with validation color
+    const bp1Class = collapsedCols.bp1 ? 'td-collapsed' : '';
+    const bp1Val = validateBP(r.bulletPoint1, 250);
+    const bp1Color = bp1Val.level === 'green' ? 'var(--green)' : bp1Val.level === 'yellow' ? 'var(--yellow)' : 'var(--red)';
+    const bp1Icon = bp1Val.level === 'green' ? '✓' : bp1Val.level === 'yellow' ? '⚠' : '✗';
+    const bp1HTML = collapsedCols.bp1 ? '' : `<div class="cell-wrap"><button class="btn-copy" onclick="copyCell(this, results[${i}].bulletPoint1||'')">Copy</button><div contenteditable="true" class="editable-cell clamped" oninput="results[${i}].bulletPoint1=this.textContent.substring(0,250)">${r.bulletPoint1||''}</div><button class="btn-expand" onclick="toggleClamp(this)">▼ ดูเพิ่ม</button></div><span class="char-count" style="color:${bp1Color}">${bp1Icon} ${(r.bulletPoint1||'').length}/250</span>`;
+
+    // BP2 column with validation color
+    const bp2Class = collapsedCols.bp2 ? 'td-collapsed' : '';
+    const bp2Val = validateBP(r.bulletPoint2, 250);
+    const bp2Color = bp2Val.level === 'green' ? 'var(--green)' : bp2Val.level === 'yellow' ? 'var(--yellow)' : 'var(--red)';
+    const bp2Icon = bp2Val.level === 'green' ? '✓' : bp2Val.level === 'yellow' ? '⚠' : '✗';
+    const bp2HTML = collapsedCols.bp2 ? '' : `<div class="cell-wrap"><button class="btn-copy" onclick="copyCell(this, results[${i}].bulletPoint2||'')">Copy</button><div contenteditable="true" class="editable-cell clamped" oninput="results[${i}].bulletPoint2=this.textContent.substring(0,250)">${r.bulletPoint2||''}</div><button class="btn-expand" onclick="toggleClamp(this)">▼ ดูเพิ่ม</button></div><span class="char-count" style="color:${bp2Color}">${bp2Icon} ${(r.bulletPoint2||'').length}/250</span>`;
+
+    // Description column with validation color
+    const descClass = collapsedCols.desc ? 'td-collapsed' : '';
+    const descVal = validateBP(r.description, 2000);
+    const descColor = descVal.level === 'green' ? 'var(--green)' : descVal.level === 'yellow' ? 'var(--yellow)' : 'var(--red)';
+    const descIcon = descVal.level === 'green' ? '✓' : descVal.level === 'yellow' ? '⚠' : '✗';
+    const descHTML = collapsedCols.desc ? '' : `<div class="cell-wrap"><button class="btn-copy" onclick="copyCell(this, results[${i}].description||'')">Copy</button><div contenteditable="true" class="editable-cell clamped" oninput="results[${i}].description=this.textContent.substring(0,2000)">${r.description||''}</div><button class="btn-expand" onclick="toggleClamp(this)">▼ ดูเพิ่ม</button></div><span class="char-count" style="color:${descColor}">${descIcon} ${(r.description||'').length}/2000</span>`;
+
+    // Title validation ตามสกิล (55-60 = เขียว, 50-54 = เหลือง, <50 = แดง)
+    const titleVal = validateTitle(r.title);
+    const tLen = r.title.length;
+    const titleColor = titleVal.level === 'green' ? 'var(--green)' : titleVal.level === 'yellow' ? 'var(--yellow)' : 'var(--red)';
+    const titleIcon = titleVal.level === 'green' ? '✓' : titleVal.level === 'yellow' ? '⚠' : '✗';
+
+    // Brand validation
+    const brandVal = validateBrand(r.brand);
+    const brandColor = brandVal.level === 'green' ? 'var(--green)' : brandVal.level === 'yellow' ? 'var(--yellow)' : 'var(--red)';
+    const brandIcon = brandVal.level === 'green' ? '✓' : brandVal.level === 'yellow' ? '⚠' : '✗';
+
+    // Uniqueness check
+    const titleDup = results.filter((x,j) => j !== i && x.title && x.title === r.title).length > 0;
+    const brandDup = results.filter((x,j) => j !== i && x.brand && x.brand === r.brand).length > 0;
+    const titleBrandSame = r.title && r.brand && r.title.toLowerCase().trim() === r.brand.toLowerCase().trim();
+
+    return `<tr>
+      <td>${i+1}</td>
+      <td><img src="${r.imageUrl}" style="width:70px;height:70px;object-fit:cover;border-radius:4px;cursor:pointer" onclick="previewImage('${r.imageUrl}')"></td>
+      <td>
+        <div class="cell-wrap">
+          <button class="btn-copy" onclick="copyCell(this, results[${i}].title)">Copy</button>
+          <div contenteditable="true" class="editable-cell clamped" oninput="results[${i}].title=this.textContent.substring(0,60)">${r.title}</div>
+          <button class="btn-expand" onclick="toggleClamp(this)">▼ ดูเพิ่ม</button>
+        </div>
+        <span class="char-count" style="color:${titleColor}">${titleIcon} ${tLen}/60</span>
+        ${tLen < 50 ? '<br><small style="color:var(--red)">⚠ ต้องอย่างน้อย 50 ตัว</small>' : ''}
+        ${titleDup ? '<br><small style="color:var(--red)">⚠ Title ซ้ำกับแถวอื่น!</small>' : ''}
+        ${titleBrandSame ? '<br><small style="color:var(--red)">⚠ Title = Brand ห้ามเหมือนกัน!</small>' : ''}
+      </td>
+      <td>
+        <div class="cell-wrap">
+          <button class="btn-copy" onclick="copyCell(this, results[${i}].brand)">Copy</button>
+          <div contenteditable="true" class="editable-cell clamped" oninput="results[${i}].brand=this.textContent.substring(0,50)">${r.brand}</div>
+          <button class="btn-expand" onclick="toggleClamp(this)">▼ ดูเพิ่ม</button>
+        </div>
+        <span class="char-count" style="color:${brandColor}">${brandIcon} ${r.brand.length}/50</span>
+        ${brandDup ? '<br><small style="color:var(--red)">⚠ Brand ซ้ำกับแถวอื่น!</small>' : ''}
+      </td>
+      <td class="${bp1Class}">${bp1HTML}</td>
+      <td class="${bp2Class}">${bp2HTML}</td>
+      <td class="${descClass}">${descHTML}</td>
+      <td>
+        ${statusBadge}${r.error?'<br><small style="color:var(--red)">'+r.error+'</small>':''}
+        ${r._tmCheck ? (r._tmCheck.hasTM
+          ? `<div class="tm-badge tm-badge-warn ${r._tmFixing?'tm-fixing':''}">™ ${r._tmCheck.allFound.length} คำ</div>
+             <div style="font-size:10px;color:var(--red);margin:2px 0">${r._tmCheck.allFound.slice(0,3).join(', ')}${r._tmCheck.allFound.length>3?'...':''}</div>
+             ${!r._tmFixing?`<button class="btn-fix-tm" onclick="fixTMRow(${i})">🔧 แก้ TM</button>`:'<small style="color:var(--yellow)">กำลังแก้...</small>'}`
+          : '<div class="tm-badge tm-badge-ok">™ ✓ ปลอดภัย</div>')
+        : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function copyCell(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1200);
+  }).catch(() => {
+    // fallback for file:// protocol
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1200);
+  });
+}
+
+function toggleClamp(btn) {
+  const cell = btn.previousElementSibling;
+  if(cell && cell.classList.contains('clamped')) {
+    if(cell.classList.contains('expanded')) {
+      cell.classList.remove('expanded');
+      btn.textContent = '▼ ดูเพิ่ม';
+    } else {
+      cell.classList.add('expanded');
+      btn.textContent = '▲ ย่อ';
+    }
+  }
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  el.innerHTML = `<div class="status-box status-${type}">${msg}</div>`;
+  setTimeout(() => el.innerHTML = '', 6000);
+}
+
+function clearResults() {
+  results = [];
+  renderResults();
+  document.getElementById('btnExport').disabled = true;
+  document.getElementById('btnClear').disabled = true;
+  document.getElementById('btnCheckTM').disabled = true;
+  document.getElementById('progressArea').classList.add('hidden');
+  document.getElementById('statsBar').classList.add('hidden');
+}
+
+// ============================================================
+// EXPORT EXCEL
+// ============================================================
+function exportExcel() {
+  if(!results.length) return;
+
+  // ตรวจสอบคุณภาพก่อน export ตามสกิล
+  const warnings = [];
+  const titles = [];
+  const brands = [];
+  results.forEach((r,i) => {
+    // ตรวจ Title ซ้ำ
+    if(r.title && titles.includes(r.title.toLowerCase().trim())) {
+      warnings.push(`แถว ${i+1}: Title ซ้ำ "${r.title}"`);
+    }
+    titles.push((r.title||'').toLowerCase().trim());
+
+    // ตรวจ Brand ซ้ำ
+    if(r.brand && brands.includes(r.brand.toLowerCase().trim())) {
+      warnings.push(`แถว ${i+1}: Brand ซ้ำ "${r.brand}"`);
+    }
+    brands.push((r.brand||'').toLowerCase().trim());
+
+    // ตรวจ Title = Brand
+    if(r.title && r.brand && r.title.toLowerCase().trim() === r.brand.toLowerCase().trim()) {
+      warnings.push(`แถว ${i+1}: Title เหมือน Brand`);
+    }
+
+    // ตรวจ Title สั้นเกินไป
+    if(r.title && r.title.length < 50) {
+      warnings.push(`แถว ${i+1}: Title สั้นเกินไป (${r.title.length}/60) — ต้องอย่างน้อย 50`);
+    }
+
+    // ตรวจตัวอักษรต้องห้าม
+    if(r.title && /[^A-Za-z0-9 ]/.test(r.title)) {
+      warnings.push(`แถว ${i+1}: Title มีตัวอักษรต้องห้าม`);
+    }
+    if(r.brand && /[^A-Za-z0-9 ]/.test(r.brand)) {
+      warnings.push(`แถว ${i+1}: Brand มีตัวอักษรต้องห้าม`);
+    }
+  });
+
+  if(warnings.length > 0) {
+    const proceed = confirm(`⚠️ พบปัญหา ${warnings.length} จุด:\n\n${warnings.slice(0,10).join('\n')}${warnings.length>10?'\n...อีก '+(warnings.length-10)+' จุด':''}\n\nต้องการ Export ต่อไหม?`);
+    if(!proceed) return;
+  }
+
+  const headers = [
+    'Image Path','Input Language','Title','Description','Tags','Type','Color','',
+    'Brand','Bullet Points 1','Bullet Points 2',
+    'Color1','Color2','Color3','Color4','Color5','Color6','Color7','Color8','Color9','Color10',
+    'Product','Marketplace','Price US'
+  ];
+  const wsData = [headers];
+  results.forEach(r => {
+    const validKWs = r.validKeywords.map(k => k.replace(/ T-Shirt$/i,'')).join(', ');
+    const row = [
+      r.imagePath,
+      'EN',
+      r.title,
+      r.description || '',
+      validKWs,
+      r.type,
+      'black',
+      '',
+      r.brand,
+      r.bulletPoint1 || '',
+      r.bulletPoint2 || ''
+    ];
+    for(let c=0;c<10;c++) row.push('');
+    row.push('Standard t-shirt','US','15.99');
+    wsData.push(row);
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const colWidths = [{wch:25},{wch:12},{wch:60},{wch:60},{wch:50},{wch:25},{wch:16},{wch:3},{wch:20},{wch:40},{wch:40},
+    {wch:16},{wch:16},{wch:16},{wch:16},{wch:16},{wch:16},{wch:16},{wch:16},{wch:16},{wch:16},
+    {wch:18},{wch:12},{wch:10}];
+  ws['!cols'] = colWidths;
+  XLSX.utils.book_append_sheet(wb, ws, 'ชีต1');
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0,10).replace(/-/g,'');
+  const timeStr = now.toTimeString().slice(0,8).replace(/:/g,'');
+  const filename = `Amazon_Merch_Keywords_${dateStr}_${timeStr}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  showStatus('📥 Export สำเร็จ: '+filename, 'success');
+}
+
+// ============================================================
+// REJECTED DB UI
+// ============================================================
+function addRejected() {
+  const kw = document.getElementById('rejectedInput').value.trim();
+  const reason = document.getElementById('rejectedReason').value.trim() || 'Manual';
+  if(!kw) return;
+  const db = DB.getRejected();
+  db.unshift({ id:'rk_'+Date.now(), keyword:kw, reason:reason, dateAdded:new Date().toISOString().slice(0,10), source:'manual' });
+  DB.setRejected(db);
+  document.getElementById('rejectedInput').value = '';
+  document.getElementById('rejectedReason').value = '';
+  renderRejectedDB();
+  updateSettingsStats();
+}
+
+function deleteRejected(id) {
+  const db = DB.getRejected().filter(r => r.id !== id);
+  DB.setRejected(db);
+  renderRejectedDB();
+  updateSettingsStats();
+}
+
+function renderRejectedDB() {
+  const search = (document.getElementById('rejectedSearch')?.value || '').toLowerCase();
+  const db = DB.getRejected().filter(r => !search || r.keyword.toLowerCase().includes(search) || (r.reason||'').toLowerCase().includes(search));
+  document.getElementById('rejectedCount').textContent = DB.getRejected().length + ' รายการ';
+  document.getElementById('rejectedBody').innerHTML = db.length === 0
+    ? '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">ยังไม่มี rejected keywords</td></tr>'
+    : db.map((r,i) => `<tr>
+        <td>${i+1}</td>
+        <td>${r.keyword}</td>
+        <td>${r.reason || '-'}</td>
+        <td>${r.dateAdded}</td>
+        <td><span class="badge badge-${r.source==='manual'?'blue':'orange'}">${r.source||'manual'}</span></td>
+        <td><button class="btn btn-sm btn-red" onclick="deleteRejected('${r.id}')">✗</button></td>
+      </tr>`).join('');
+}
+
+// ============================================================
+// SEASONAL DB UI
+// ============================================================
+function populateSeasonSelect() {
+  const sel = document.getElementById('seasonSelect');
+  const db = DB.getSeasonal();
+  sel.innerHTML = '<option value="">-- เลือกกลุ่ม Keyword --</option>' + db.map(s => {
+    const now = new Date().getMonth()+1;
+    const active = s.activeMonths.includes(now);
+    return `<option value="${s.id}">${active?'🟢':'⚪'} ${s.season}</option>`;
+  }).join('');
+}
+
+function addSeasonalKW() {
+  const sid = document.getElementById('seasonSelect').value;
+  const kw = document.getElementById('seasonKWInput').value.trim();
+  if(!sid || !kw) return;
+  const db = DB.getSeasonal();
+  const s = db.find(x => x.id === sid);
+  if(s && !s.keywords.includes(kw)) {
+    s.keywords.push(kw);
+    DB.setSeasonal(db);
+    document.getElementById('seasonKWInput').value = '';
+    renderSeasonalDB();
+  }
+}
+
+function deleteSeasonalKW(sid, kw) {
+  const db = DB.getSeasonal();
+  const s = db.find(x => x.id === sid);
+  if(s) {
+    s.keywords = s.keywords.filter(k => k !== kw);
+    if(s.requiredForTitle) s.requiredForTitle = s.requiredForTitle.filter(k => k !== kw);
+    DB.setSeasonal(db);
+    renderSeasonalDB();
+  }
+}
+
+function toggleRequiredKW(sid, kw) {
+  const db = DB.getSeasonal();
+  const s = db.find(x => x.id === sid);
+  if(s) {
+    if(!s.requiredForTitle) s.requiredForTitle = [];
+    if(s.requiredForTitle.includes(kw)) {
+      s.requiredForTitle = s.requiredForTitle.filter(k => k !== kw);
+    } else {
+      s.requiredForTitle.push(kw);
+    }
+    DB.setSeasonal(db);
+    renderSeasonalDB();
+  }
+}
+
+function getRequiredTitleKeywords() {
+  const db = DB.getSeasonal();
+  return db.flatMap(s => s.requiredForTitle || []);
+}
+
+function addNewSeason() {
+  const name = prompt('ชื่อกลุ่ม Keyword ใหม่ (เช่น Christmas, Birthday, Valentine):');
+  if(!name) return;
+  const months = prompt('เดือนที่ active (เช่น 1,2,3 หรือเว้นว่างถ้าใช้ได้ตลอด):');
+  const db = DB.getSeasonal();
+  const parsedMonths = months ? months.split(',').map(m => parseInt(m.trim())).filter(m => m>=1 && m<=12) : [1,2,3,4,5,6,7,8,9,10,11,12];
+  db.push({
+    id: 's_'+Date.now(),
+    season: name,
+    keywords: [],
+    activeMonths: parsedMonths
+  });
+  DB.setSeasonal(db);
+  populateSeasonSelect();
+  renderSeasonalDB();
+}
+
+function deleteSeason(sid) {
+  if(!confirm('ลบกลุ่ม Keyword นี้?')) return;
+  const db = DB.getSeasonal().filter(s => s.id !== sid);
+  DB.setSeasonal(db);
+  populateSeasonSelect();
+  renderSeasonalDB();
+}
+
+function renderSeasonalDB() {
+  const db = DB.getSeasonal();
+  const now = new Date().getMonth()+1;
+  const sid = document.getElementById('seasonSelect')?.value;
+  const monthNames = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px">';
+
+  const toShow = sid ? db.filter(s=>s.id===sid) : db;
+  toShow.forEach(s => {
+    const active = s.activeMonths.includes(now);
+    html += `<div class="panel" style="margin:0;padding:20px;border-color:${active?'var(--green)':'var(--border)'}">
+      <div class="flex-between mb8">
+        <div>
+          <strong style="font-size:20px;color:${active?'var(--green)':'var(--text)'}">${active?'🟢':'⚪'} ${s.season}</strong>
+          <br><small style="color:var(--muted);font-size:16px">Months: ${s.activeMonths.map(m=>monthNames[m]).join(', ')}</small>
+        </div>
+        <button class="btn btn-sm btn-red" onclick="deleteSeason('${s.id}')">🗑️</button>
+      </div>
+      <div style="max-height:280px;overflow-y:auto">
+        ${s.keywords.map(k => {
+          const isReq = (s.requiredForTitle||[]).includes(k);
+          const esc = k.replace(/'/g,"\\'");
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:18px;${isReq?'color:var(--green);font-weight:bold':''}">${isReq?'⭐ ':''}${k}</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm ${isReq?'btn-blue':'btn-green'}" style="padding:4px 12px;font-size:18px" onclick="toggleRequiredKW('${s.id}','${esc}')" title="${isReq?'นำออกจาก Title บังคับ':'เพิ่มใน Title ทุกรูป'}">${isReq?'⭐':'➕'}</button>
+            <button class="btn btn-sm btn-red" style="padding:4px 10px;font-size:18px" onclick="deleteSeasonalKW('${s.id}','${esc}')">✗</button>
+          </div>
+        </div>`;
+        }).join('')}
+        ${s.keywords.length===0?'<div style="color:var(--muted);font-size:18px;padding:10px">ยังไม่มี keywords</div>':''}
+      </div>
+      <div style="margin-top:8px;font-size:16px;color:var(--muted)">${s.keywords.length} keywords${(s.requiredForTitle||[]).length>0?' · <span style="color:var(--green)">⭐ '+((s.requiredForTitle||[]).length)+' บังคับใน Title</span>':''}</div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('seasonalContent').innerHTML = html;
+  updateSettingsStats();
+}
+
+// ============================================================
+// TRADEMARK DB UI
+// ============================================================
+function addTrademark() {
+  const term = document.getElementById('tmInput').value.trim();
+  const cat = document.getElementById('tmCategory').value;
+  if(!term) return;
+  const db = DB.getTrademark();
+  if(db.find(t => t.term.toLowerCase() === term.toLowerCase())) {
+    showStatus('⚠️ "'+term+'" มีอยู่แล้ว','error');
+    return;
+  }
+  db.unshift({ id:'tm_'+Date.now(), term, category:cat, dateAdded:new Date().toISOString().slice(0,10) });
+  DB.setTrademark(db);
+  document.getElementById('tmInput').value = '';
+
+  // Immediately filter this term from ALL existing results titles & keywords
+  let cleaned = 0;
+  if(results && results.length > 0) {
+    results.forEach(r => {
+      // Remove from title
+      const oldTitle = r.title;
+      r.title = filterBannedFromTitle(r.title);
+      if(oldTitle !== r.title) cleaned++;
+
+      // Remove from validKeywords
+      const beforeLen = r.validKeywords.length;
+      r.validKeywords = r.validKeywords.filter(kw => !kw.toLowerCase().includes(term.toLowerCase()));
+      if(r.validKeywords.length < beforeLen) cleaned++;
+
+      // Remove from keywords
+      r.keywords = r.keywords.filter(kw => !kw.toLowerCase().includes(term.toLowerCase()));
+    });
+    renderResults();
+  }
+
+  renderTrademarkDB();
+  updateSettingsStats();
+
+  if(cleaned > 0) {
+    showStatus(`✅ เพิ่ม "${term}" แล้ว — ลบออกจากผลลัพธ์ ${cleaned} รายการทันที`,'success');
+  } else {
+    showStatus(`✅ เพิ่ม "${term}" เป็นคำต้องห้ามแล้ว — จะไม่ปรากฏใน Title อีก`,'success');
+  }
+}
+
+function deleteTrademark(id) {
+  const db = DB.getTrademark().filter(t => t.id !== id);
+  DB.setTrademark(db);
+  renderTrademarkDB();
+  updateSettingsStats();
+}
+
+// Trademark search — open external websites
+const TM_URLS = {
+  uspto: (q) => `https://tmsearch.uspto.gov/bin/showfield?f=tess&state=4810:1.1.1&p_search=searchss&p_s_All=${encodeURIComponent(q)}&a_default=search&a_search=Submit+Query&f=tess&state=4810:1.1.1`,
+  trademarkia: (q) => `https://www.trademarkia.com/trademarks-search.aspx?tn=${encodeURIComponent(q)}`,
+  euipo: (q) => `https://www.tmdn.org/tmview/#/tmview/results?page=1&pageSize=30&criteria=C&basicSearch=${encodeURIComponent(q)}`,
+  wipo: (q) => `https://branddb.wipo.int/en/quicksearch?by=brandName&v=${encodeURIComponent(q)}`
+};
+
+function searchTM(site, term) {
+  const q = term || document.getElementById('tmQuickSearch')?.value?.trim();
+  if(!q) { showStatus('⚠️ กรุณาพิมพ์คำที่ต้องการค้นหา','error'); return; }
+  const url = TM_URLS[site]?.(q);
+  if(url) window.open(url, '_blank');
+}
+
+function searchTMAll(term) {
+  if(!term) return;
+  window.open(TM_URLS.trademarkia(term), '_blank');
+}
+
+function renderTrademarkDB() {
+  const search = (document.getElementById('tmSearch')?.value || '').toLowerCase();
+  const db = DB.getTrademark().filter(t => !search || t.term.toLowerCase().includes(search) || (t.category||'').toLowerCase().includes(search));
+  const total = DB.getTrademark().length;
+  document.getElementById('tmCount').textContent = total + ' รายการ';
+  document.getElementById('tmBody').innerHTML = db.length === 0
+    ? '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">ยังไม่มี trademark</td></tr>'
+    : db.slice(0,200).map((t,i) => `<tr>
+        <td>${i+1}</td>
+        <td><strong>${t.term}</strong></td>
+        <td><span class="badge badge-blue">${t.category||'brand'}</span></td>
+        <td>${t.dateAdded||'-'}</td>
+        <td><button class="btn btn-sm" style="background:var(--blue);color:#fff;padding:4px 8px" onclick="searchTMAll('${t.term.replace(/'/g,"\\'")}')">🔍</button></td>
+        <td><button class="btn btn-sm btn-red" onclick="deleteTrademark('${t.id}')">✗</button></td>
+      </tr>`).join('') + (db.length>200?`<tr><td colspan="6" style="text-align:center;color:var(--muted)">แสดง 200/${db.length} รายการ</td></tr>`:'');
+}
+
+// ============================================================
+// HISTORY DB UI
+// ============================================================
+function renderHistoryDB() {
+  const search = (document.getElementById('historySearch')?.value || '').toLowerCase();
+  const db = DB.getHistory().filter(h => !search || h.title.toLowerCase().includes(search) || (h.keywords||[]).some(k=>k.toLowerCase().includes(search)));
+  document.getElementById('historyCount').textContent = DB.getHistory().length + ' รายการ';
+  document.getElementById('historyBody').innerHTML = db.length === 0
+    ? '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">ยังไม่มีประวัติ</td></tr>'
+    : db.slice(0,100).map((h,i) => `<tr>
+        <td>${i+1}</td>
+        <td>${h.dateCreated}</td>
+        <td style="font-size:20px">${h.imagePath}</td>
+        <td style="font-size:22px">${h.title}</td>
+        <td><span class="badge badge-green">${(h.keywords||[]).length} kw</span></td>
+        <td>${h.season?`<span class="season-badge">${h.season}</span>`:'✅'}</td>
+      </tr>`).join('');
+}
+
+function clearHistory() {
+  if(!confirm('ล้างประวัติทั้งหมด?')) return;
+  DB.setHistory([]);
+  renderHistoryDB();
+  updateSettingsStats();
+}
+
+// ============================================================
+// IMPORT / EXPORT DB
+// ============================================================
+function exportDB(type) {
+  let data;
+  if(type==='rejected') data = DB.getRejected();
+  else if(type==='seasonal') data = DB.getSeasonal();
+  else if(type==='trademark') data = DB.getTrademark();
+  else if(type==='history') data = DB.getHistory();
+  else return;
+
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `merch_${type}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function importDB(type) {
+  const input = document.getElementById('importFileInput');
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if(!Array.isArray(data)) throw new Error('Invalid format');
+        if(type==='rejected') { DB.setRejected(data); renderRejectedDB(); }
+        else if(type==='seasonal') { DB.setSeasonal(data); populateSeasonSelect(); renderSeasonalDB(); }
+        else if(type==='trademark') { DB.setTrademark(data); renderTrademarkDB(); }
+        else if(type==='history') { DB.setHistory(data); renderHistoryDB(); }
+        showStatus('📥 Import สำเร็จ! ('+data.length+' รายการ)','success');
+        updateSettingsStats();
+      } catch(err) { showStatus('❌ Import ผิดพลาด: '+err.message,'error'); }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  };
+  input.click();
+}
+
+function exportAllDB() {
+  const all = {
+    rejected: DB.getRejected(),
+    seasonal: DB.getSeasonal(),
+    trademark: DB.getTrademark(),
+    history: DB.getHistory(),
+    settings: DB.getSettings()
+  };
+  const blob = new Blob([JSON.stringify(all,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `merch_all_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function importAllDB() {
+  const input = document.getElementById('importFileInput');
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if(data.rejected) DB.setRejected(data.rejected);
+        if(data.seasonal) DB.setSeasonal(data.seasonal);
+        if(data.trademark) DB.setTrademark(data.trademark);
+        if(data.history) DB.setHistory(data.history);
+        if(data.settings) DB.setSettings(data.settings);
+        renderRejectedDB();
+        populateSeasonSelect();
+        renderSeasonalDB();
+        renderTrademarkDB();
+        renderHistoryDB();
+        loadToggles();
+        updateSettingsStats();
+        showStatus('📥 Import All สำเร็จ!','success');
+      } catch(err) { showStatus('❌ Import ผิดพลาด: '+err.message,'error'); }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  };
+  input.click();
+}
+
+function resetAllDB() {
+  if(!confirm('⚠️ ล้างข้อมูลทั้งหมด? (Rejected, Keywords, Trademark, History)')) return;
+  if(!confirm('แน่ใจหรือ? ข้อมูลจะหายทั้งหมดและไม่สามารถกู้คืนได้')) return;
+  localStorage.removeItem('merch_rejected');
+  localStorage.removeItem('merch_seasonal');
+  localStorage.removeItem('merch_trademark');
+  localStorage.removeItem('merch_history');
+  renderRejectedDB();
+  populateSeasonSelect();
+  renderSeasonalDB();
+  renderTrademarkDB();
+  renderHistoryDB();
+  updateSettingsStats();
+  showStatus('🗑️ ล้างข้อมูลทั้งหมดสำเร็จ','success');
+}
+
+function updateSettingsStats() {
+  document.getElementById('setRejCount').textContent = DB.getRejected().length;
+  document.getElementById('setSeaCount').textContent = DB.getSeasonal().reduce((a,s)=>a+s.keywords.length,0);
+  document.getElementById('setTMCount').textContent = DB.getTrademark().length;
+  document.getElementById('setHistCount').textContent = DB.getHistory().length;
+}
+
+// ============================================================
+// GITHUB SYNC
+// ============================================================
+async function syncToGitHub() {
+  const token = document.getElementById('ghToken').value;
+  const repo = document.getElementById('ghRepo').value;
+  if(!token || !repo) { showStatus('❌ กรุณาใส่ GitHub Token และ Repository','error'); return; }
+
+  const all = {
+    rejected: DB.getRejected(),
+    seasonal: DB.getSeasonal(),
+    trademark: DB.getTrademark(),
+    history: DB.getHistory(),
+    settings: DB.getSettings(),
+    lastSync: new Date().toISOString()
+  };
+
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(all,null,2))));
+
+  try {
+    // Check if file exists
+    let sha = null;
+    try {
+      const check = await fetch(`https://api.github.com/repos/${repo}/contents/merch_keywords_db.json`, {
+        headers: { 'Authorization': 'token '+token }
+      });
+      if(check.ok) { const d = await check.json(); sha = d.sha; }
+    } catch(e) {}
+
+    const body = {
+      message: 'Update Merch Keywords DB - '+new Date().toISOString(),
+      content: content
+    };
+    if(sha) body.sha = sha;
+
+    const res = await fetch(`https://api.github.com/repos/${repo}/contents/merch_keywords_db.json`, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token '+token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if(res.ok) showStatus('📤 Push to GitHub สำเร็จ!','success');
+    else { const err = await res.json(); throw new Error(err.message); }
+  } catch(err) {
+    showStatus('❌ GitHub Error: '+err.message,'error');
+  }
+}
+
+async function pullFromGitHub() {
+  const token = document.getElementById('ghToken').value;
+  const repo = document.getElementById('ghRepo').value;
+  if(!token || !repo) { showStatus('❌ กรุณาใส่ GitHub Token และ Repository','error'); return; }
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}/contents/merch_keywords_db.json`, {
+      headers: { 'Authorization': 'token '+token }
+    });
+    if(!res.ok) throw new Error('File not found');
+    const d = await res.json();
+    const data = JSON.parse(decodeURIComponent(escape(atob(d.content))));
+
+    if(data.rejected) DB.setRejected(data.rejected);
+    if(data.seasonal) DB.setSeasonal(data.seasonal);
+    if(data.trademark) DB.setTrademark(data.trademark);
+    if(data.history) DB.setHistory(data.history);
+    if(data.settings) DB.setSettings(data.settings);
+
+    renderRejectedDB();
+    populateSeasonSelect();
+    renderSeasonalDB();
+    renderTrademarkDB();
+    renderHistoryDB();
+    loadToggles();
+    updateSettingsStats();
+    showStatus('📥 Pull from GitHub สำเร็จ! (Last sync: '+(data.lastSync||'unknown')+')','success');
+  } catch(err) {
+    showStatus('❌ GitHub Error: '+err.message,'error');
+  }
+}
+
+// ============================================================
+// SUPABASE INTEGRATION
+// ============================================================
+let supabaseClient = null;
+
+function connectSupabase() {
+  const url = document.getElementById('supabaseUrl').value.trim();
+  const key = document.getElementById('supabaseKey').value.trim();
+  if(!url || !key) { showSupabaseStatus('❌ กรุณาใส่ URL และ Key','error'); return; }
+  try {
+    supabaseClient = window.supabase.createClient(url, key);
+    // Save credentials
+    const s = DB.getSettings(); s.supabaseUrl = url; s.supabaseKey = key; DB.setSettings(s);
+    showSupabaseStatus('✅ เชื่อมต่อ Supabase สำเร็จ!','success');
+    initSupabaseTables();
+  } catch(e) { showSupabaseStatus('❌ เชื่อมต่อไม่สำเร็จ: '+e.message,'error'); }
+}
+
+async function initSupabaseTables() {
+  if(!supabaseClient) return;
+  // Try to create tables via RPC or just test connection
+  try {
+    const { data, error } = await supabaseClient.from('merch_data').select('id').limit(1);
+    if(error && error.code === '42P01') {
+      // Table doesn't exist - need to create via SQL editor in Supabase dashboard
+      showSupabaseStatus('⚠️ ตาราง merch_data ยังไม่มี กรุณาสร้างใน Supabase Dashboard:<br><code style="font-size:20px;display:block;margin-top:4px;padding:6px;background:var(--card2);border-radius:4px;white-space:pre-wrap">CREATE TABLE merch_data (\n  id TEXT PRIMARY KEY DEFAULT \'main\',\n  rejected JSONB DEFAULT \'[]\'::jsonb,\n  seasonal JSONB DEFAULT \'[]\'::jsonb,\n  trademark JSONB DEFAULT \'[]\'::jsonb,\n  history JSONB DEFAULT \'[]\'::jsonb,\n  settings JSONB DEFAULT \'{}\'::jsonb,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\nALTER TABLE merch_data ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Allow anon access" ON merch_data FOR ALL USING (true);</code>','info');
+    } else if(!error) {
+      showSupabaseStatus('✅ เชื่อมต่อสำเร็จ! ตาราง merch_data พร้อมใช้งาน','success');
+    } else {
+      showSupabaseStatus('⚠️ '+error.message,'error');
+    }
+  } catch(e) { showSupabaseStatus('❌ '+e.message,'error'); }
+}
+
+async function pushToSupabase() {
+  if(!supabaseClient) { showSupabaseStatus('❌ กรุณาเชื่อมต่อ Supabase ก่อน','error'); return; }
+  showSupabaseStatus('<span class="spinner"></span> กำลัง Push...','info');
+  try {
+    const payload = {
+      id: 'main',
+      rejected: DB.getRejected(),
+      seasonal: DB.getSeasonal(),
+      trademark: DB.getTrademark(),
+      history: DB.getHistory(),
+      settings: DB.getSettings(),
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await supabaseClient.from('merch_data').upsert(payload);
+    if(error) throw error;
+    showSupabaseStatus('✅ Push ไป Supabase สำเร็จ! ('+new Date().toLocaleString('th-TH')+')','success');
+  } catch(e) { showSupabaseStatus('❌ Push Error: '+e.message,'error'); }
+}
+
+async function pullFromSupabase() {
+  if(!supabaseClient) { showSupabaseStatus('❌ กรุณาเชื่อมต่อ Supabase ก่อน','error'); return; }
+  showSupabaseStatus('<span class="spinner"></span> กำลัง Pull...','info');
+  try {
+    const { data, error } = await supabaseClient.from('merch_data').select('*').eq('id','main').single();
+    if(error) throw error;
+    if(!data) { showSupabaseStatus('⚠️ ยังไม่มีข้อมูลบน Cloud','info'); return; }
+    if(data.rejected) DB.setRejected(data.rejected);
+    if(data.seasonal) DB.setSeasonal(data.seasonal);
+    if(data.trademark) DB.setTrademark(data.trademark);
+    if(data.history) DB.setHistory(data.history);
+    if(data.settings) {
+      const s = data.settings;
+      s.supabaseUrl = document.getElementById('supabaseUrl').value;
+      s.supabaseKey = document.getElementById('supabaseKey').value;
+      DB.setSettings(s);
+    }
+    renderRejectedDB(); populateSeasonSelect(); renderSeasonalDB();
+    renderTrademarkDB(); renderHistoryDB(); loadToggles(); updateSettingsStats();
+    showSupabaseStatus('✅ Pull จาก Supabase สำเร็จ! (อัพเดท: '+(data.updated_at?new Date(data.updated_at).toLocaleString('th-TH'):'N/A')+')','success');
+  } catch(e) { showSupabaseStatus('❌ Pull Error: '+e.message,'error'); }
+}
+
+function showSupabaseStatus(msg, type) {
+  const el = document.getElementById('supabaseStatus');
+  if(el) el.innerHTML = `<div class="status-box status-${type}">${msg}</div>`;
+}
+
+// ============================================================
+// INITIALIZE
+// ============================================================
+function loadSupabaseSettings() {
+  const s = DB.getSettings();
+  if(s.supabaseUrl) document.getElementById('supabaseUrl').value = s.supabaseUrl;
+  if(s.supabaseKey) document.getElementById('supabaseKey').value = s.supabaseKey;
+  if(s.supabaseUrl && s.supabaseKey) {
+    try {
+      supabaseClient = window.supabase.createClient(s.supabaseUrl, s.supabaseKey);
+    } catch(e) {}
+  }
+}
+
+init();
+loadSupabaseSettings();
+
+// === PWA Service Worker Registration ===
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
