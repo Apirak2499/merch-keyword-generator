@@ -1088,6 +1088,7 @@ Generate 8-12 long-tail keyword phrases based on detected elements.
 - DO NOT include filler words that buyers never search: Gift, Design, Art, Cool, Awesome, Perfect, Amazing, Best, Great, Nice, Beautiful, Cute, Idea, Premium, Unique, Special
 - DO NOT include fabric/material words: Cotton, Polyester, Soft, Lightweight, Comfortable, Breathable
 - DO NOT include promotional words: Sale, Discount, Free Shipping, Limited, Guarantee, #1, Top Rated, Bestseller, New
+- DO NOT include medical/therapy words: Therapy, Therapeutic, Healing, Cure, Treatment, Remedy, Medicine, Medication, Clinical, Supplement, Detox, Wellness, Holistic, Pain Relief, Stress Relief, Aromatherapy, Rehabilitation. Amazon PROHIBITS health/medical claims on apparel. Instead use lifestyle words: Inspired, Celebrating, Passion, Dedicated, Lifestyle, Mindset, Journey, Spirit, Vibe, Energy, Positivity
 - ONLY use characters: A-Z, a-z, 0-9, and spaces. NO emoji, NO special symbols, NO accented characters (e, n, u)
 - DO use: niche + audience + occasion format
 - Mix broad keywords with niche long-tail keywords
@@ -1196,7 +1197,8 @@ ${descOn ? `### Description (MUST be 1500-2000 characters!)
 
 ### Content Rules (APPLIES TO ALL — BP1, BP2, Description):
 - DO NOT mention: product type (shirt/tee/hoodie), fabric (cotton/polyester), print quality, shipping, discounts, prices
-- DO NOT use ANY banned words from the 5 categories (clothing, filler, effects, promo, inappropriate)
+- DO NOT use ANY banned words from the 6 categories (clothing, filler, effects, promo, inappropriate, medical/therapy)
+- NEVER use medical/therapy words: therapy, therapeutic, healing, cure, treatment, remedy, medicine, medication, clinical, prescription, supplement, detox, wellness, holistic, pain relief, stress relief, anxiety relief, sleep aid, aromatherapy, rehabilitation — Amazon prohibits health claims on apparel. Instead use: "inspired by", "celebrating", "passion for", "dedicated to", "lifestyle", "mindset", "journey", "spirit", "vibe", "energy", "positivity", "self-care enthusiast", "mindfulness lover"
 - DO NOT use trademarked names, celebrity names, copyrighted characters, team names
 - DO NOT keyword-stuff — sentences must read naturally (read aloud test)
 - ONLY use characters: A-Z, a-z, 0-9, spaces, and basic punctuation (. , ! ?)
@@ -1409,6 +1411,32 @@ const BANNED_INAPPROPRIATE = [
   'racist','sexist','porn','nude','naked','xxx','slave','genocide'
 ];
 
+// หมวด 6: คำเกี่ยวกับการรักษา/ยา/การแพทย์ (Amazon ห้ามอ้างสรรพคุณ)
+const BANNED_MEDICAL = [
+  'therapy','therapist','therapeutic','healing','healer','heal',
+  'cure','curing','remedy','remedies','treatment','treating','treat',
+  'medicine','medical','medication','medicinal','pharmaceutical',
+  'prescription','clinical','clinically','diagnosis','diagnose',
+  'symptom','symptoms','recovery','recovering','recover',
+  'wellness','well-being','wellbeing','holistic',
+  'anti-inflammatory','antibacterial','antiviral','antimicrobial',
+  'pain relief','pain reliever','painkiller','analgesic',
+  'antidepressant','antianxiety','anti-anxiety',
+  'supplement','supplements','vitamin','vitamins','dosage','dose',
+  'detox','detoxify','cleanse','cleansing','purify','purifying',
+  'immune','immunity','immune booster','immune support',
+  'blood pressure','cholesterol','diabetes','insulin',
+  'fda','fda approved','clinically proven','scientifically proven',
+  'doctor recommended','physician','surgeon','psychiatrist',
+  'psychotherapy','counseling','rehabilitation','rehab',
+  'aromatherapy','hydrotherapy','physiotherapy','chemotherapy',
+  'acupuncture','homeopathy','homeopathic','naturopathy','naturopathic',
+  'soothing','calming','stress relief','anxiety relief',
+  'sleep aid','insomnia','melatonin','sedative',
+  'herbal remedy','herbal medicine','essential oil therapy',
+  'heal your','cure your','treat your','relieve your'
+];
+
 // รวมทั้งหมด
 const BANNED_TITLE_WORDS = [
   ...BANNED_CLOTHING,
@@ -1416,6 +1444,7 @@ const BANNED_TITLE_WORDS = [
   ...BANNED_EFFECTS,
   ...BANNED_PROMO,
   ...BANNED_INAPPROPRIATE,
+  ...BANNED_MEDICAL,
   'olympic','olympics'
 ];
 
