@@ -247,33 +247,24 @@ tr:hover td { background:rgba(0,210,235,.02); }
     <h1><em>AI</em>PassiveLab — Keyword Generator <span id="appVersion" style="font-size:13px;color:var(--muted);font-weight:400">v0.6</span></h1>
     <span>สร้าง SEO Keywords + Title + Safety Check สำหรับ Amazon Merch on Demand</span>
   </div>
-  <!-- ▶ VDO สอน — embedded tutorial video -->
-  <div id="hdrTutorialVid" style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-    <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.3px;box-shadow:0 2px 8px rgba(239,68,68,.45);text-shadow:0 1px 2px rgba(0,0,0,.2)">
-      <span style="font-size:13px;line-height:1">▶</span> VDO สอนดูตรงนี้
-    </div>
-    <a href="https://youtu.be/bnDMOipw8UY" target="_blank" rel="noopener noreferrer"
-       style="position:relative;display:block;width:220px;aspect-ratio:16/9;border-radius:10px;overflow:hidden;border:2px solid rgba(239,68,68,.55);box-shadow:0 4px 18px rgba(0,0,0,.45);cursor:pointer;text-decoration:none;background:#000;transition:transform .2s, border-color .2s, box-shadow .2s"
-       onmouseover="this.style.borderColor='#ef4444';this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 26px rgba(239,68,68,.4)'"
-       onmouseout="this.style.borderColor='rgba(239,68,68,.55)';this.style.transform='';this.style.boxShadow='0 4px 18px rgba(0,0,0,.45)'"
-       title="ดูคลิปสอนการใช้งาน Keyword Generator" aria-label="เปิดคลิปสอนการใช้งาน">
-      <img src="https://img.youtube.com/vi/bnDMOipw8UY/mqdefault.jpg" alt="คลิปสอนการใช้งาน"
-           loading="lazy"
-           style="width:100%;height:100%;object-fit:cover;display:block"
-           onerror="this.style.display='none';this.parentNode.style.background='linear-gradient(135deg,#1a1a2e,#16213e)'">
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.45))">
-        <div style="width:48px;height:48px;border-radius:50%;background:rgba(239,68,68,.95);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.55)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-        </div>
-      </div>
-    </a>
-  </div>
+  <!-- ▶ VDO ตัวอย่างการใช้งาน — tutorial video button -->
+  <a id="hdrTutorialBtn" href="https://youtu.be/bnDMOipw8UY" target="_blank" rel="noopener noreferrer"
+     title="คลิกดูคลิปตัวอย่างการใช้งาน Keyword Generator" aria-label="VDO ตัวอย่างการใช้งาน"
+     style="margin-left:auto;display:inline-flex;align-items:center;gap:10px;padding:10px 18px;background:linear-gradient(135deg,#0891b2,#00d2eb);color:#fff;border:1px solid rgba(0,210,235,.4);border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 4px 16px rgba(0,210,235,.25);transition:transform .2s, box-shadow .2s, filter .2s;white-space:nowrap"
+     onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,210,235,.45)';this.style.filter='brightness(1.1)'"
+     onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(0,210,235,.25)';this.style.filter=''">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.18);flex-shrink:0">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+    </span>
+    VDO ตัวอย่างการใช้งาน
+  </a>
 </div>
 <style>
-  /* Mobile responsive — ซ่อน thumbnail บนจอเล็ก เหลือแค่ chip "VDO สอนดูตรงนี้" */
+  /* Mobile responsive — ย่อปุ่มบนจอเล็ก */
   @media (max-width: 700px){
-    #hdrTutorialVid a { display:none; }
-    #hdrTutorialVid { gap:0; }
+    #hdrTutorialBtn { padding:8px 12px; font-size:12px; gap:6px; }
+    #hdrTutorialBtn span { width:20px; height:20px; }
+    #hdrTutorialBtn svg { width:9px; height:9px; }
   }
 </style>
 
